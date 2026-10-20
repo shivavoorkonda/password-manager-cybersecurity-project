@@ -113,15 +113,16 @@ with those labels rather than real-world crack resistance.
 ### Train the model in Kaggle
 
 Open [`kaggle_password_model_training.ipynb`](proposed-improvement/ml-model/kaggle_password_model_training.ipynb)
-in Kaggle. Before running it, create a **private Kaggle Dataset** containing the
-four Python files in `proposed-improvement/ml-model/` (`prepare_data.py`,
-`features.py`, `train_model.py`, `evaluate_model.py`) and the input files
-`password_strength.csv`, `rockyou.txt`, `xato-net-10-million-passwords.csv`,
-and `top10k-common-passwords.csv` from `datasets/`. For RockYou, upload the
-real file; the small Git LFS pointer file is not the dataset. Attach that
-private dataset to the notebook, keep the notebook private, and run the cells
-in order. The notebook saves a checkpoint after input inventory, data
-preparation, each model's training completion, evaluation, and packaging.
+in Kaggle. Use **Add Data** to attach Kaggle's [Password Strength Classifier
+Dataset](https://www.kaggle.com/datasets/bhavikbb/password-strength-classifier-dataset)
+and [Common Password List (rockyou.txt)](https://www.kaggle.com/datasets/wjburns/common-password-list-rockyoutxt).
+The notebook clones this public repository for its training code and the Xato
+and top-10k CSVs, so you do not need to upload a combined custom dataset. Enable
+Internet for the clone and package install; keep the notebook private and run
+the cells in order. The notebook saves a checkpoint after input inventory,
+data preparation, each model's training completion, evaluation, and packaging.
+The small local RockYou Git LFS pointer is not the dataset; use the Kaggle
+dataset attached in **Add Data**.
 
 At the end, use Kaggle's **Save Version → Save & Run All** and download the
 private `password-manager-kaggle-model.zip` output. It contains
