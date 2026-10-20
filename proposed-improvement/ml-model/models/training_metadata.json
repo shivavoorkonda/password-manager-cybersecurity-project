@@ -1,0 +1,79 @@
+{
+  "seed": 42,
+  "available_models": [
+    "rf",
+    "xgb"
+  ],
+  "selected_model": "rf",
+  "model_metrics": [
+    {
+      "Model": "Random Forest",
+      "Accuracy (%)": 95.83333333333334,
+      "Macro F1 (%)": 95.81510562985927
+    },
+    {
+      "Model": "XGBoost",
+      "Accuracy (%)": 86.65333333333334,
+      "Macro F1 (%)": 86.07190284153538
+    }
+  ],
+  "features": [
+    "length",
+    "entropy",
+    "count_uppercase",
+    "ratio_uppercase",
+    "count_lowercase",
+    "ratio_lowercase",
+    "count_digits",
+    "ratio_digits",
+    "count_symbols",
+    "ratio_symbols",
+    "count_unique_chars",
+    "ratio_unique_chars",
+    "sequences",
+    "repeats",
+    "transitions",
+    "dictionary_hit",
+    "common_patterns"
+  ],
+  "class_labels": {
+    "0": "weak",
+    "1": "medium",
+    "2": "strong"
+  },
+  "train_rows": 300000,
+  "test_rows": 15000,
+  "dataset_sources": [
+    "/kaggle/input/datasets/bhavikbb/password-strength-classifier-dataset/data.csv",
+    "/kaggle/input/datasets/wjburns/common-password-list-rockyoutxt/rockyou.txt",
+    "/kaggle/input/datasets/shivamb/10000-most-common-passwords/common_passwords.csv",
+    "/kaggle/input/datasets/joebeachcapital/top-10-million-passwords/10millionPasswords.csv"
+  ],
+  "source_counts": {
+    "labeled_csv_rows": 669594,
+    "labeled_csv_train_pool": 516906,
+    "labeled_csv_holdout_pool": 133919,
+    "common_passwords_csv_rows": 10000,
+    "top_million_csv_rows_used": 499997,
+    "rockyou_first_200k_rows": 200000,
+    "unique_weak_list_passwords": 566787,
+    "weak_list_train_rows": 453429,
+    "weak_list_heldout_rows": 113358,
+    "synthetic_strong_generated": 50000,
+    "balanced_train_rows": 300000,
+    "dictionary_entries": 453429,
+    "evaluation_rows": 15000
+  },
+  "dictionary_entries": 453429,
+  "evaluation_protocol": "held-out weak-list partition plus held-out labeled medium/strong examples",
+  "base_paper": "Password Manager, IJRASET 2025, DOI 10.22214/ijraset.2025.76363; it reports no ML classifier accuracy metrics",
+  "package_versions": {
+    "pandas": "2.3.3",
+    "numpy": "2.1.3",
+    "scikit-learn": "1.6.1",
+    "xgboost": "3.4.1",
+    "joblib": "1.6.0",
+    "zxcvbn-python": "4.4.24"
+  },
+  "note": "Top 10 Million Kaggle source is a SecLists common-password list, not the Xato dataset. The base paper reports no ML accuracy scores. Current metrics use source-derived labels and are not real-world crackability measurements."
+}

@@ -79,6 +79,10 @@ if model_name:
             model.load_model(os.path.join(MODEL_DIR, 'xgb_model.json'))
         else:
             model = joblib.load(os.path.join(MODEL_DIR, f'{model_name}_model.joblib'))
+        if model_name == 'rf' and hasattr(model, 'n_jobs'):
+            # A single interactive prediction gains nothing from a worker pool;
+            # keep inference reliable on Windows and constrained environments.
+            model.n_jobs = 1
         feature_names = joblib.load(os.path.join(MODEL_DIR, 'feature_names.joblib'))
         print(f"Loaded {model_name.upper()} model with {len(feature_names)} features.")
     except Exception as e:
@@ -141,8 +145,9 @@ def predict():
                 X[fn] = 0
         X = X[feature_names]
         
-    pred = int(model.predict(X)[0])
-    probs = model.predict_proba(X)[0]
+    prediction_input = X.to_numpy() if model_name == 'rf' else X
+    pred = int(model.predict(prediction_input)[0])
+    probs = model.predict_proba(prediction_input)[0]
     confidence = float(probs[pred])
     
     labels = ["weak", "medium", "strong"]
@@ -221,8 +226,9 @@ def analyze():
                 if fn not in X.columns:
                     X[fn] = 0
             X = X[feature_names]
-        pred = int(model.predict(X)[0])
-        probabilities = model.predict_proba(X)[0]
+        prediction_input = X.to_numpy() if model_name == 'rf' else X
+        pred = int(model.predict(prediction_input)[0])
+        probabilities = model.predict_proba(prediction_input)[0]
         ml_res = {"strength": pred, "confidence": float(probabilities[pred]), "features": features}
         
     labels = ["weak", "medium", "strong"]

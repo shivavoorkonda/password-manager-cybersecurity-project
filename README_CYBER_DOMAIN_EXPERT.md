@@ -25,7 +25,7 @@ The ZIP supplied by the project owner reported the following held-out metrics. T
 | Random Forest | 95.84 | 95.82 |
 | XGBoost | 86.65 | 86.07 |
 
-That ZIP did not contain the Random Forest model artifact, even though Random Forest scored highest. Its XGBoost pickle also failed to load in the local environment. Therefore these numbers can be reported as the ZIP's evaluation output, but neither model from that ZIP is ready to install. The updated Kaggle notebook packages Random Forest and portable XGBoost JSON. Run it again before replacing the app model.
+The first ZIP omitted the Random Forest artifact. The newly supplied ZIP includes it and a portable XGBoost JSON artifact; integrity and inference checks passed. The RF artifact was trained with scikit-learn 1.6.1, and the local API loaded it using that pinned version and returned a prediction. The source-derived label and split limits above still apply.
 
 ## Dataset and evaluation limits
 
@@ -54,6 +54,6 @@ The feature extractor has 17 features. A dictionary hit is based on exact match 
 ## Correct claims for a project presentation
 
 - The base paper describes an application, not a measured password classifier. This project adds and evaluates its own comparison.
-- The supplied Kaggle result has Random Forest as the highest-scoring candidate, but its corresponding artifact was missing from the supplied ZIP. The updated notebook must be run to produce a usable bundle.
+- The latest supplied Kaggle ZIP contains the highest-scoring Random Forest artifact, and the local Flask API has been smoke-checked with it.
 - The app combines browser encryption, strength feedback, and a browser-side HIBP range lookup. The Node backend is currently separate, and local ML inference receives plaintext over loopback.
 - Argon2id is a benchmark-only comparison; PBKDF2 remains in the vault implementation.

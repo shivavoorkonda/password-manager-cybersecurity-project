@@ -4,7 +4,7 @@
 **Base paper:** Mahesh Kanjikar et al., â€œPassword Manager,â€ IJRASET, Vol. 13, Issue XII, December 2025, DOI: [10.22214/ijraset.2025.76363](https://doi.org/10.22214/ijraset.2025.76363)
 **Implementation:** [`shivavoorkonda/password-manager-cybersecurity-project`](https://github.com/shivavoorkonda/password-manager-cybersecurity-project)
 
-> **Results status:** The supplied Kaggle ZIP reports held-out model metrics, documented below. Its highest-scoring Random Forest artifact was missing and its XGBoost pickle did not load in the local environment, so those metrics do not mean the best model is installed. Rerun the corrected notebook to produce the installable model bundle. No HIBP timing or KDF benchmark result is claimed here.
+> **Results status:** The latest supplied Kaggle ZIP includes the highest-scoring Random Forest artifact and portable XGBoost JSON. Both passed ZIP integrity and feature checks. With scikit-learn 1.6.1 (the training version), the local Flask API loaded Random Forest and returned a prediction. The model comparison is still limited to source-derived labels and this held-out split. No HIBP timing is claimed here.
 
 ## 1. Introduction
 
@@ -93,11 +93,11 @@ The supplied Kaggle ZIP's `model_comparison.csv` provides the accuracy and macro
 
 Random Forest outperformed the app rule meter by 26.39 percentage points in accuracy and zxcvbn by 11.55 points. Its macro-F1 was 33.19 points above the rule meter and 11.64 points above zxcvbn (rounded from the supplied CSV). XGBoost did not match Random Forest in this run. This supports an improvement on this experiment's evaluation split only, not a comparison with paper-reported metrics.
 
-**Model artifact limitation:** The supplied ZIP contains the XGBoost artifact and score table, but no `rf_model.joblib`, despite Random Forest being the top-scoring model. The RF result can be reported, but that RF model cannot be installed in the app from this ZIP. The corrected notebook now packages both model artifacts for a reproducible app update.
+**Model artifact update:** The latest ZIP now contains `rf_model.joblib`, portable `xgb_model.json`, matching feature order, metadata, results, and dictionary. The local API selected and smoke-tested Random Forest. The RF artifact was trained with scikit-learn 1.6.1; the service requirements pin that version because scikit-learn pickle compatibility is version-sensitive. The dictionary contains password strings and is kept local, not committed to Git.
 
 ### 5.2 Other evaluation
 
-The HIBP feature can be checked functionally with test inputs, but report breach counts and network latency only after a documented live run. Likewise, the Argon2 benchmark script produces machine-dependent timing measurements; add results only from a new local execution and include hardware/software details. The app still uses PBKDF2: benchmark results do not mean Argon2id is integrated.
+The HIBP feature can be checked functionally with test inputs, but report breach counts and network latency only after a documented live run. A local CPU timing run was performed on Windows 11, on an Intel processor, using 10 measured runs after one warm-up. The PBKDF2-HMAC-SHA256 600,000-iteration case measured a 368.45 ms median (367.59 ms mean, 30.71 ms standard deviation); the Argon2id 65,536 KiB, t=3, p=1 case measured a 190.27 ms median (197.76 ms mean, 18.94 ms standard deviation). Full platform metadata and all configurations are in `report/figures/kdf_benchmark_results.json`. These configurations do not represent equivalent work, and this benchmark measures only local CPU derivation latency; it says nothing quantitative about GPU cracking. The app still uses PBKDF2: benchmark results do not mean Argon2id is integrated.
 
 ## 6. Limitations and future work
 
@@ -113,7 +113,7 @@ Future work should first validate the corrected experiment and improve label/spl
 
 ## 7. Conclusion
 
-This project is a Secure Password Manager with an encrypted browser vault and additional password-strength and breach-awareness components. The base paper is used as an application-level reference, not as a source of classifier scores: it does not specify a strength algorithm or report accuracy and macro-F1. In the supplied project experiment, Random Forest had the highest reported accuracy (95.84%) and macro-F1 (95.82%) among the four compared methods. This is an improvement over the project's rule and zxcvbn baselines on that held-out, source-labeled split only. The supplied ZIP omitted the RF artifact and its XGBoost pickle was incompatible locally, so rerun the corrected Kaggle notebook before presenting a live ML demonstration.
+This project is a Secure Password Manager with an encrypted browser vault and additional password-strength and breach-awareness components. The base paper is used as an application-level reference, not as a source of classifier scores: it does not specify a strength algorithm or report accuracy and macro-F1. In the supplied project experiment, Random Forest had the highest reported accuracy (95.84%) and macro-F1 (95.82%) among the four compared methods. This is an improvement over the project's rule and zxcvbn baselines on that held-out, source-labeled split only. The latest ZIP includes RF, and the local API loaded it and returned a test prediction under the pinned scikit-learn version.
 
 ## References
 

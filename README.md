@@ -25,7 +25,7 @@ These values came from the `model_comparison.csv` in the ZIP supplied by the pro
 | Random Forest | 95.84 | 95.82 |
 | XGBoost | 86.65 | 86.07 |
 
-The ZIP reported Random Forest as the best model but omitted its model file, and the included XGBoost pickle failed to load in the local environment. **The reported best model is not installed from that ZIP.** The updated notebook saves the RF artifact and portable XGBoost JSON; rerun it in Kaggle before installing its new ZIP. The experiment's common-password lists supply weak labels by source membership, while the strength CSV supplies its own labels, so the evaluation measures agreement with these labels and this split.
+The earlier ZIP omitted the top-scoring Random Forest artifact. The new ZIP at `password-manager-kaggle-model (2).zip` includes RF and portable XGBoost JSON; both artifacts, the 17-feature order, metadata, and the matching dictionary passed integrity checks. The RF model is now installed locally and the API smoke check selected it successfully. Its metadata reports scikit-learn 1.6.1, so use the pinned dependency in `proposed-improvement/ml-model/requirements.txt` when setting up the service. The experiment's common-password lists supply weak labels by source membership, while the strength CSV supplies its own labels, so the evaluation measures agreement with these labels and this split.
 
 ## Run the frontend and local ML service
 

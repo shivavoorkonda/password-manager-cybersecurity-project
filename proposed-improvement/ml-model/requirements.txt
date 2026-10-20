@@ -1,6 +1,8 @@
 pandas>=2.0.0
 numpy>=1.24.0
-scikit-learn>=1.3.0
+# The packaged Random Forest was trained with this version; sklearn pickle
+# compatibility is version-sensitive. Update this pin with each new bundle.
+scikit-learn==1.6.1
 xgboost>=2.0.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
