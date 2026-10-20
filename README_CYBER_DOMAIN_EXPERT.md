@@ -22,7 +22,7 @@ The ZIP supplied by the project owner reported the following held-out metrics. T
 |---|---:|---:|
 | Existing app rule meter | 69.45 | 62.63 |
 | zxcvbn | 84.29 | 84.19 |
-| Random Forest | 95.84 | 95.82 |
+| Random Forest | 95.83 | 95.82 |
 | XGBoost | 86.65 | 86.07 |
 
 The first ZIP omitted the Random Forest artifact. The newly supplied ZIP includes it and a portable XGBoost JSON artifact; integrity and inference checks passed. The RF artifact was trained with scikit-learn 1.6.1, and the local API loaded it using that pinned version and returned a prediction. The source-derived label and split limits above still apply.

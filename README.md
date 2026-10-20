@@ -4,6 +4,8 @@ Application-based cybersecurity project using the IJRASET paper “Password Mana
 
 The paper describes a password manager and says it includes strength analysis, but it does not define that algorithm or publish classifier accuracy/F1 results. This project adds an app rule meter, zxcvbn, a Random Forest/XGBoost experiment, and a Have I Been Pwned (HIBP) lookup. Do not label the project metrics as paper results.
 
+**Submission report:** [Markdown source](report/ACADEMIC_PROJECT_REPORT.md) | [PDF](output/pdf/secure_password_manager_project_report.pdf). The report follows the instructor's nine sections and records the implementation and evaluation limits.
+
 ## What is in this repository
 
 - **React browser vault:** encrypts vault entries with AES-256-GCM and derives the key with PBKDF2-HMAC-SHA256 (600,000 iterations). Encrypted entries are stored in this browser's `localStorage`.
@@ -22,7 +24,7 @@ These values came from the `model_comparison.csv` in the ZIP supplied by the pro
 |---|---:|---:|
 | Existing app rule meter | 69.45 | 62.63 |
 | zxcvbn | 84.29 | 84.19 |
-| Random Forest | 95.84 | 95.82 |
+| Random Forest | 95.83 | 95.82 |
 | XGBoost | 86.65 | 86.07 |
 
 The earlier ZIP omitted the top-scoring Random Forest artifact. The new ZIP at `password-manager-kaggle-model (2).zip` includes RF and portable XGBoost JSON; both artifacts, the 17-feature order, metadata, and the matching dictionary passed integrity checks. The RF model is now installed locally and the API smoke check selected it successfully. Its metadata reports scikit-learn 1.6.1, so use the pinned dependency in `proposed-improvement/ml-model/requirements.txt` when setting up the service. The experiment's common-password lists supply weak labels by source membership, while the strength CSV supplies its own labels, so the evaluation measures agreement with these labels and this split.
@@ -103,4 +105,4 @@ datasets/                                 Existing tracked research inputs and n
 report/                                   Academic project report
 ```
 
-The notebook's 95.84% Random Forest accuracy is the strongest result in the supplied comparison, but it still needs a fresh reproducible run and a successfully packaged RF artifact before that candidate can be installed and demonstrated.
+The supplied comparison's Random Forest artifact is installed and was verified through the local Flask API. Its 95.83% accuracy and 95.82% macro-F1 are preliminary results on this source-labelled split, not paper results or real-world crackability measurements. For a live demo, stop any older service already using port 5000 before starting the bundled service so the UI reaches the current artifact.
