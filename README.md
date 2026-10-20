@@ -16,6 +16,12 @@ The paper describes a password manager and says it includes strength analysis, b
 
 This is a class prototype, not an audited production password manager. The ML service receives the password in plaintext over loopback. Do not expose it to a network or enter real account passwords during demos.
 
+## System architecture
+
+The diagram summarizes the browser vault, the local strength-analysis service, and the HIBP range lookup. It also marks the Node/PostgreSQL scaffold as separate because the current browser-vault flow does not use it.
+
+![System architecture of the Secure Password Manager](report/figures/system_architecture.png)
+
 ## Latest supplied model comparison
 
 These values came from the `model_comparison.csv` in the ZIP supplied by the project owner. Training used source-derived labels and a held-out split; these numbers are not paper scores or measurements of real-world crack resistance.

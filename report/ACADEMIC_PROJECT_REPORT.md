@@ -132,13 +132,11 @@ The browser computes the password’s SHA-1 hash locally, sends only its first f
 
 ### 5.4 Architecture
 
-User -> React browser vault:
-- PBKDF2 -> AES-GCM key -> encrypt/decrypt local vault.
-- Rule meter and zxcvbn run as local strength estimators.
-- SHA-1 prefix -> HIBP range API -> local suffix comparison.
-- Password over loopback -> Flask ML API -> RF/XGBoost result.
+Figure 1 shows the implemented browser-vault flow and the two external checks. The Node/PostgreSQL scaffold is included separately to make clear that the current vault does not connect to it.
 
-The Node/PostgreSQL scaffold is a separate component and is not used by the current vault flow.
+![System architecture of the Secure Password Manager, showing browser-local encryption, local password-strength analysis, the HIBP range lookup, and the disconnected Node/PostgreSQL scaffold.](figures/system_architecture.png)
+
+**Figure 1.** System architecture of the implemented prototype.
 
 ## 6. Implementation of the Proposed Approach
 
