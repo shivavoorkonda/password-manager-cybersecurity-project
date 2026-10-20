@@ -2,7 +2,14 @@
 
 **Application-based cybersecurity project report**
 
-**Student:** ____________________ | **Department / institution:** ____________________ | **Course / section:** ____________________ | **Date:** ____________________
+**Project members**
+
+1. **Vujja Punith Sai** — Roll No. **S20240010260**
+2. **Voorkonda Shivamani Kumar Reddy** — Roll No. **S20240010259**
+
+**Department:** Computer Science and Engineering (CSE)  
+**Institution:** IIIT Sri City  
+**Course:** CSE
 
 ## Abstract
 
