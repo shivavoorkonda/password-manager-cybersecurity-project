@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, LogOut, Shield, Download, Upload } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, LogOut, Shield } from 'lucide-react';
 import { LoginForm } from './components/LoginForm';
 import { VaultItem } from './components/VaultItem';
 import { AddPasswordForm } from './components/AddPasswordForm';

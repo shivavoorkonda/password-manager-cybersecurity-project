@@ -13,15 +13,23 @@ function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Copy into an owned ArrayBuffer because Web Crypto rejects views whose backing
+// type could be SharedArrayBuffer under current TypeScript DOM definitions.
+function toArrayBuffer(data: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(data.length);
+  copy.set(data);
+  return copy.buffer;
+}
+
 // Helper to convert Base64 to Uint8Array
-function base64ToBuffer(base64: string): Uint8Array {
+function base64ToBuffer(base64: string): ArrayBuffer {
   const binary_string = atob(base64);
   const len = binary_string.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
     bytes[i] = binary_string.charCodeAt(i);
   }
-  return bytes;
+  return bytes.buffer;
 }
 
 /**
@@ -41,7 +49,7 @@ export async function deriveKey(masterPassword: string, salt: Uint8Array, iterat
   return window.crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: toArrayBuffer(salt),
       iterations: iterations,
       hash: 'SHA-256'
     },
@@ -79,7 +87,7 @@ export async function hashMasterPassword(password: string, salt: Uint8Array): Pr
   const hashBuffer = await window.crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: toArrayBuffer(salt),
       iterations: 100000,
       hash: 'SHA-256'
     },
@@ -103,7 +111,7 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<{ciphe
   const ciphertextBuffer = await window.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
-      iv: iv
+      iv: toArrayBuffer(iv)
     },
     key,
     encodedPlaintext
@@ -111,7 +119,7 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<{ciphe
 
   return {
     ciphertext: bufferToBase64(ciphertextBuffer),
-    iv: bufferToBase64(iv)
+    iv: bufferToBase64(toArrayBuffer(iv))
   };
 }
 
@@ -125,7 +133,7 @@ export async function decrypt(ciphertext: string, ivBase64: string, key: CryptoK
   const decryptedBuffer = await window.crypto.subtle.decrypt(
     {
       name: 'AES-GCM',
-      iv: iv
+      iv
     },
     key,
     ciphertextBuffer

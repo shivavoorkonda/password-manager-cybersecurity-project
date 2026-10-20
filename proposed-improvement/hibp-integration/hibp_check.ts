@@ -23,29 +23,37 @@ export async function checkPasswordBreach(password: string): Promise<{breached: 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
 
-        const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        let response: Response;
+        try {
+            response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+                signal: controller.signal,
+                headers: { 'Add-Padding': 'true' }
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
             throw new Error(`HIBP API returned ${response.status}`);
         }
 
         const text = await response.text();
-        const lines = text.split('\n');
+        const lines = text.split(/\r?\n/);
 
         for (const line of lines) {
-            const [h, count] = line.split(':');
-            if (h.trim() === suffix) {
-                return { breached: true, count: parseInt(count.trim(), 10) };
+            const separator = line.indexOf(':');
+            if (separator < 0) continue;
+            const h = line.slice(0, separator).trim().toUpperCase();
+            const count = Number.parseInt(line.slice(separator + 1).trim(), 10);
+            if (h === suffix && Number.isFinite(count)) {
+                return { breached: true, count };
             }
         }
 
         return { breached: false, count: 0 };
     } catch (error) {
         console.error("Error checking password breach:", error);
-        // Fail open: assume not breached if API fails
-        return { breached: false, count: 0 };
+        // A failed lookup is not evidence that the password is safe.
+        throw new Error('Breach check unavailable; try again later.');
     }
 }

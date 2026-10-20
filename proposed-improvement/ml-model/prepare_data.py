@@ -186,7 +186,16 @@ def load_seclists(base_path: str) -> pd.DataFrame:
 def load_xato(path: str, limit: int = 500000) -> pd.DataFrame:
     """Load the Xato 10-million password list (subset)."""
     print(f"\n[4/5] Loading Xato password list from {path} (limit={limit})...")
-    lines = load_lines(path, limit=limit)
+    if path.lower().endswith('.csv'):
+        try:
+            raw = pd.read_csv(path, nrows=limit, on_bad_lines='skip')
+            column = 'password' if 'password' in raw.columns else raw.columns[-1]
+            lines = raw[column].dropna().astype(str).tolist()
+        except FileNotFoundError:
+            print(f"  [SKIP] File not found: {path}")
+            lines = []
+    else:
+        lines = load_lines(path, limit=limit)
     if not lines:
         return pd.DataFrame(columns=['password', 'strength', 'source'])
 
@@ -237,7 +246,24 @@ def generate_strong_set(n: int = 50000, english_words_path: str = None) -> pd.Da
 # Dictionary builder
 # ---------------------------------------------------------------------------
 
+def load_top10k(path: str) -> pd.DataFrame:
+    """Load the checked-in common-password list and label entries as weak."""
+    print(f"\nLoading top-10k common passwords from {path}...")
+    try:
+        raw = pd.read_csv(path, on_bad_lines='skip')
+    except FileNotFoundError:
+        print(f"  [SKIP] File not found: {path}")
+        return pd.DataFrame(columns=['password', 'strength', 'source'])
+    column = 'password' if 'password' in raw.columns else raw.columns[0]
+    passwords = raw[column].dropna().astype(str).str.strip()
+    df = pd.DataFrame({'password': passwords, 'strength': 0, 'source': 'top10k'})
+    df = df[df['password'].str.len() >= 3].drop_duplicates(subset=['password'])
+    print(f"  Loaded {len(df)} common passwords (labelled weak by source, not measured).")
+    return df
+
+
 def build_dictionary(rockyou_path: str, seclists_path: str, output_path: str,
+                     top10k_path: str = None,
                      limit: int = 100000) -> set:
     """
     Build a merged dictionary of common/weak passwords for feature extraction.
@@ -275,6 +301,9 @@ def build_dictionary(rockyou_path: str, seclists_path: str, output_path: str,
         'baseball', 'killer', 'whatever', 'jordan', 'daniel', 'hannah',
     ]
     dictionary.update(common_words)
+    if top10k_path:
+        top10k = load_top10k(top10k_path)
+        dictionary.update(top10k['password'].str.lower().tolist())
 
     # Save to file
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -304,8 +333,11 @@ def main():
                         default='../../datasets/seclists',
                         help='Path to SecLists root directory')
     parser.add_argument('--xato-path', type=str,
-                        default='../../datasets/xato-net-10-million-passwords.txt',
+                        default='../../datasets/xato-net-10-million-passwords.csv',
                         help='Path to Xato 10-million password list')
+    parser.add_argument('--top10k-path', type=str,
+                        default='../../datasets/top10k-common-passwords.csv',
+                        help='Path to the checked-in common-password list')
     parser.add_argument('--output-dir', type=str,
                         default='../../datasets',
                         help='Output directory for processed datasets')
@@ -337,6 +369,11 @@ def main():
     seclists_df = load_seclists(args.seclists_path)
     if len(seclists_df) > 0:
         datasets.append(seclists_df)
+
+    # The repository includes a top10k CSV; load it explicitly even without SecLists.
+    top10k_df = load_top10k(args.top10k_path)
+    if len(top10k_df) > 0:
+        datasets.append(top10k_df)
 
     # 4. Xato (mixed, labelled by entropy heuristic)
     xato_df = load_xato(args.xato_path, limit=args.xato_limit)
@@ -434,7 +471,8 @@ def main():
     # Build dictionary
     # -----------------------------------------------------------------------
     dict_path = os.path.join(args.output_dir, 'dictionary.txt')
-    build_dictionary(args.rockyou_path, args.seclists_path, dict_path)
+    build_dictionary(args.rockyou_path, args.seclists_path, dict_path,
+                     top10k_path=args.top10k_path)
 
     print(f"\n{'='*60}")
     print("Data preparation complete!")

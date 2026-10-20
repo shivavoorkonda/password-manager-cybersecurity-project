@@ -6,8 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+      '/ml-api': {
+        target: 'http://127.0.0.1:5000',
+        rewrite: (path) => path.replace(/^\/ml-api/, '/api'),
         changeOrigin: true,
       },
     },

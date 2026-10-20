@@ -5,6 +5,8 @@
 **Project Type:** Application-Based Project  
 **Base Article:** "Password Manager", IJRASET, Vol. 13, Issue XII, Dec 2025 (DOI: 10.22214/ijraset.2025.76363)  
 
+> **Reproducibility status (20 October 2026):** Historical dataset counts, model scores, HIBP timings, and benchmark values below have not been regenerated from the checked-in pipeline in this revision. Do not present them as verified results until you rerun preparation, training, and evaluation and replace the tables with fresh output. Source-based and heuristic labels are proxies; model scores measure agreement with those labels, not real-world crack resistance.
+
 ---
 
 # Section 1: Introduction
@@ -250,7 +252,7 @@ export const passwords = pgTable('passwords', {
 
 To solve the challenges of heuristic strength evaluation, absence of breach intelligence, and GPU-friendly key derivation, three concrete improvements are proposed:
 
-1. **ML-Based Strength Classifier:** Random Forest and XGBoost models trained on 15 character-level, structural, and dictionary features extracted from over 1.29 million passwords.
+1. **ML-Based Strength Classifier:** Random Forest and XGBoost models trained on 15 character-level, structural, and dictionary features. Current dataset size and metrics must be taken from a fresh preparation and evaluation run.
 2. **Privacy-Preserving Breach Check (HIBP):** Client-side k-anonymity protocol querying the Have I Been Pwned API using only the first 5 characters of the SHA-1 digest.
 3. **Argon2id Key Derivation Benchmark:** Memory-hard KDF benchmarking demonstrating superior resistance against GPU brute-force attacks.
 
@@ -295,20 +297,17 @@ To solve the challenges of heuristic strength evaluation, absence of breach inte
 
 ## 6.1 Multi-Source Dataset Integration (`prepare_data.py`)
 
-To eliminate the bias present in synthetic datasets, 5 datasets were processed:
+The preparation script can combine these sources when present. Exact input counts depend on the files and limits used for each run:
 - **Kaggle Password Strength Dataset:** 669,639 passwords with labels 0 (weak), 1 (medium), 2 (strong).
 - **RockYou Wordlist:** 199,987 real-world breach passwords (all labelled weak).
 - **Xato 10-Million Password List:** 499,997 entries classified using Shannon entropy heuristic.
 - **Top 10k Common Passwords:** 10,000 common passwords (all labelled weak).
 - **Synthetic High-Entropy Set:** 50,000 CSPRNG passwords (all labelled strong).
 
-### Dictionary-Corrected Labeling
-A crucial enhancement was applied: any password found in the RockYou, Top 10k, or common dictionary lists was **forced to label 0 (Weak)**, regardless of whether its character composition met complexity heuristics. Over **110,632 labels were corrected**, teaching the ML models that passwords like `P@ssw0rd1!` and `Summer2024!` are genuinely weak.
+### Label Provenance
+RockYou and top10k records are labeled weak based on their source; Xato records are assigned labels by a heuristic; Kaggle labels are retained; generated strings receive the strong label. The current code does not relabel Kaggle rows by cross-checking the dictionary. The dictionary is a model feature, not a verified ground-truth correction step.
 
-Outputs generated:
-- `combined_train.csv`: 660,565 training passwords
-- `clean_test.csv`: 15,000 balanced evaluation passwords (5,000 Weak, 5,000 Medium, 5,000 Strong)
-- `dictionary.txt`: 118,914 unique dictionary terms
+The checked-in CSVs are prior generated artifacts. Regenerate them with `python prepare_data.py`, then record the printed totals and class/source distribution here. Do not reuse historical totals as current pipeline results.
 
 ## 6.2 Feature Engineering (`features.py`)
 
@@ -346,7 +345,9 @@ All experimental results presented below are derived from actual execution on th
 
 ## 7.1 ML Classifier Performance
 
-### 7.1.1 Evaluation 1: Standard Test Split (21,000 stratified samples)
+### 7.1.1 Evaluation 1: Standard Test Split (historical, unverified)
+
+This table is retained from an earlier report draft and has not been reproduced from this checkout. Replace it after running the documented evaluation pipeline.
 
 **Table 7.1: Classification Performance Comparison (Standard Test Split)**
 | Model | Accuracy | Macro F1 | Weak (0) F1 | Medium (1) F1 | Strong (2) F1 |
@@ -358,7 +359,9 @@ All experimental results presented below are derived from actual execution on th
 
 *Analysis:* On the standard test set, the rule-based approach scored only **65.41% F1 on weak passwords** because it misclassifies dictionary passwords containing capital letters and numbers as "Medium" or "Strong". The proposed Random Forest and XGBoost models achieved **99.95% F1**, successfully identifying weak credentials.
 
-### 7.1.2 Evaluation 2: Clean Multi-Source Test Set (15,000 balanced passwords)
+### 7.1.2 Evaluation 2: Clean Multi-Source Test Set (historical, unverified)
+
+This table is retained from an earlier report draft and has not been reproduced from this checkout. Its labels include source-based or heuristic labels, so it is not a human-validated measure of real-world password strength. Replace it after running the documented evaluation pipeline.
 
 The clean test set provides the ultimate evaluation: 5,000 Weak, 5,000 Medium, and 5,000 Strong passwords drawn across Kaggle, Xato, RockYou, and CSPRNG generated passwords.
 
@@ -416,11 +419,11 @@ The following visual figures are generated in `report/figures/`:
 
 # Section 8: Conclusion
 
-This project successfully implemented a zero-knowledge password manager based on modern web technologies (React, TypeScript, Express, PostgreSQL) utilizing client-side AES-256-GCM encryption and PBKDF2 key derivation. A rigorous investigation identified eight fundamental limitations in the baseline paper [1], primarily the vulnerability of rule-based password evaluation, the total absence of breach-exposure detection, and the GPU susceptibility of PBKDF2.
+This project implements a local browser-based vault prototype with client-side AES-256-GCM encryption and PBKDF2 key derivation. The local ML analysis service receives the password in plaintext over loopback, so the combined system must not be described as zero-knowledge while that service is enabled. The UI's HIBP check uses the range API and sends a five-character hash prefix.
 
 To resolve these challenges, three enhancements were proposed, implemented, and empirically evaluated:
 
-1. **ML-Based Strength Classifier:** Engineered a 15-feature extraction module and trained Random Forest and XGBoost models on a dictionary-corrected multi-source corpus. The models achieved **94.35% accuracy** and **94.32% Macro F1** on an independent 15,000-password clean test set, outperforming the base paper's rule-based approach (**90.89%**) and standard zxcvbn (**84.81%**).
+1. **ML-Based Strength Classifier:** The repository contains a 15-feature extraction module and saved Random Forest and XGBoost models. Performance figures remain provisional until regenerated with the checked-in scripts and documented dataset provenance.
 2. **Privacy-Preserving Breach Check:** Deployed an HIBP k-anonymity verification module that queries over 900 million compromised credentials with an average latency of **497.3 ms** without disclosing user credentials.
 3. **KDF Benchmarking:** Demonstrated that Argon2id provides superior GPU cracking resistance while executing in **31–44 ms**, outperforming PBKDF2 at 600,000 iterations (**232.35 ms**).
 

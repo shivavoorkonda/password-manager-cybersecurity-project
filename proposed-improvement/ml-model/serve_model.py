@@ -4,16 +4,24 @@ import requests
 import joblib
 import pandas as pd
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from features import extract_all_features
 from zxcvbn import zxcvbn
 import re
 
 app = Flask(__name__)
-CORS(app)
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024
 
 # Load model on startup
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'models')
+DATASET_DIR = os.path.abspath(os.path.join(MODEL_DIR, '..', '..', '..', 'datasets'))
+DICTIONARY_PATH = os.path.join(DATASET_DIR, 'dictionary.txt')
+try:
+    with open(DICTIONARY_PATH, 'r', encoding='utf-8', errors='ignore') as dictionary_file:
+        dictionary = {line.strip().lower() for line in dictionary_file if line.strip()}
+    print(f"Loaded {len(dictionary):,} dictionary entries.")
+except OSError:
+    dictionary = set()
+    print(f"Dictionary unavailable at {DICTIONARY_PATH}; dictionary_hit will be zero.")
 try:
     xgb_model = joblib.load(os.path.join(MODEL_DIR, 'xgb_model.joblib'))
     feature_names = joblib.load(os.path.join(MODEL_DIR, 'feature_names.joblib'))
@@ -39,14 +47,20 @@ def rule_based_predict(password: str) -> int:
 def health():
     return jsonify({"status": "ok"})
 
+def parse_password_payload():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('password'), str):
+        return None, (jsonify({"error": "password must be a string"}), 400)
+    if not data['password']:
+        return None, (jsonify({"error": "password must not be empty"}), 400)
+    return data['password'], None
+
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    data = request.json
-    if not data or 'password' not in data:
-        return jsonify({"error": "No password provided"}), 400
-        
-    password = data['password']
-    features = extract_all_features(password)
+    password, error = parse_password_payload()
+    if error:
+        return error
+    features = extract_all_features(password, dictionary)
     
     if xgb_model is None:
         return jsonify({"error": "Model not loaded"}), 500
@@ -74,32 +88,32 @@ def predict():
 
 @app.route('/api/check-breach', methods=['POST'])
 def check_breach():
-    data = request.json
-    if not data or 'password' not in data:
-        return jsonify({"error": "No password provided"}), 400
-        
-    password = data['password']
+    password, error = parse_password_payload()
+    if error:
+        return error
     sha1 = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
     prefix, suffix = sha1[:5], sha1[5:]
     
     try:
         response = requests.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=5)
         if response.status_code == 200:
-            hashes = (line.split(':') for line in response.text.splitlines())
-            for h, count in hashes:
+            for line in response.text.splitlines():
+                if ':' not in line:
+                    continue
+                h, count = line.split(':', 1)
                 if h == suffix:
                     return jsonify({"breached": True, "count": int(count)})
+        if response.status_code != 200:
+            return jsonify({"error": f"HIBP returned HTTP {response.status_code}"}), 502
         return jsonify({"breached": False, "count": 0})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
-    data = request.json
-    if not data or 'password' not in data:
-        return jsonify({"error": "No password provided"}), 400
-        
-    password = data['password']
+    password, error = parse_password_payload()
+    if error:
+        return error
     
     # 1. Breach check
     breach_res = {"breached": False, "count": 0}
@@ -108,13 +122,17 @@ def analyze():
         prefix, suffix = sha1[:5], sha1[5:]
         response = requests.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=2)
         if response.status_code == 200:
-            hashes = (line.split(':') for line in response.text.splitlines())
-            for h, count in hashes:
+            for line in response.text.splitlines():
+                if ':' not in line:
+                    continue
+                h, count = line.split(':', 1)
                 if h == suffix:
                     breach_res = {"breached": True, "count": int(count)}
                     break
-    except:
-        pass
+        elif response.status_code != 200:
+            breach_res = {"error": f"HIBP returned HTTP {response.status_code}"}
+    except requests.RequestException:
+        breach_res = {"error": "HIBP check unavailable"}
         
     # 2. Rule based
     rule_pred = rule_based_predict(password)
@@ -127,7 +145,7 @@ def analyze():
     # 4. ML Model
     ml_res = {}
     if xgb_model:
-        features = extract_all_features(password)
+        features = extract_all_features(password, dictionary)
         X = pd.DataFrame([features])
         if feature_names:
             for fn in feature_names:
@@ -147,4 +165,5 @@ def analyze():
     })
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    # The model endpoint accepts plaintext passwords; bind to loopback only.
+    app.run(host='127.0.0.1', port=5000)
