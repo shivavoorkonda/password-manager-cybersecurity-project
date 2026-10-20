@@ -110,6 +110,27 @@ counts, and record the split seed and source labels used. The current pipeline
 contains heuristic and source-derived labels, so its scores measure agreement
 with those labels rather than real-world crack resistance.
 
+### Train the model in Kaggle
+
+Open [`kaggle_password_model_training.ipynb`](proposed-improvement/ml-model/kaggle_password_model_training.ipynb)
+in Kaggle. Before running it, create a **private Kaggle Dataset** containing the
+four Python files in `proposed-improvement/ml-model/` (`prepare_data.py`,
+`features.py`, `train_model.py`, `evaluate_model.py`) and the input files
+`password_strength.csv`, `rockyou.txt`, `xato-net-10-million-passwords.csv`,
+and `top10k-common-passwords.csv` from `datasets/`. For RockYou, upload the
+real file; the small Git LFS pointer file is not the dataset. Attach that
+private dataset to the notebook, keep the notebook private, and run the cells
+in order. The notebook saves a checkpoint after input inventory, data
+preparation, each model's training completion, evaluation, and packaging.
+
+At the end, use Kaggle's **Save Version → Save & Run All** and download the
+private `password-manager-kaggle-model.zip` output. It contains
+`xgb_model.joblib`, `feature_names.joblib`, training metadata, evaluation logs,
+and figures; it excludes the prepared password CSVs and dictionary. Keep all
+Kaggle inputs and outputs private because the source data contains leaked or
+common passwords. Attach the zip in this chat for model compatibility checks
+and integration into the local API.
+
 ### Step 5: Run KDF Benchmark
 
 ```powershell

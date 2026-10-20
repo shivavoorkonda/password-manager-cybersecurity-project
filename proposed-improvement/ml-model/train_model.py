@@ -6,6 +6,8 @@ Trains Random Forest and XGBoost on combined_train.csv with dictionary-corrected
 
 import argparse
 import os
+import json
+import tempfile
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -16,6 +18,20 @@ import xgboost as xgb
 import joblib
 
 from features import extract_all_features
+
+
+def save_checkpoint(value, output_path: str) -> None:
+    """Atomically save a model artifact so completed training survives later failures."""
+    directory = os.path.dirname(output_path)
+    os.makedirs(directory, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix='.checkpoint-', suffix='.tmp', dir=directory)
+    os.close(fd)
+    try:
+        joblib.dump(value, temp_path)
+        os.replace(temp_path, output_path)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 def load_dictionary(dict_path: str) -> set:
@@ -94,6 +110,10 @@ def main():
     # Extract features
     X, y = prepare_data(df, dictionary)
 
+    feature_names = list(X.columns)
+    save_checkpoint(feature_names, os.path.join(args.output_dir, 'feature_names.joblib'))
+    print(f"Saved feature-name checkpoint ({len(feature_names)} features).")
+
     # Split: 70% train, 15% validation, 15% test
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=0.3, stratify=y, random_state=42
@@ -115,6 +135,8 @@ def main():
         n_estimators=200, max_depth=20, random_state=42, n_jobs=-1
     )
     rf_model.fit(X_train, y_train)
+    save_checkpoint(rf_model, os.path.join(args.output_dir, 'rf_model.joblib'))
+    print("Saved Random Forest checkpoint.")
 
     rf_test_preds = rf_model.predict(X_test)
     print("\nRandom Forest - Test Set:")
@@ -129,6 +151,8 @@ def main():
         random_state=42, n_jobs=-1, eval_metric='mlogloss'
     )
     xgb_model.fit(X_train, y_train)
+    save_checkpoint(xgb_model, os.path.join(args.output_dir, 'xgb_model.joblib'))
+    print("Saved XGBoost checkpoint.")
 
     xgb_test_preds = xgb_model.predict(X_test)
     print("\nXGBoost - Test Set:")
@@ -140,15 +164,23 @@ def main():
     print("="*60)
     importances = rf_model.feature_importances_
     indices = np.argsort(importances)[::-1]
-    feature_names = list(X.columns)
     for i in range(min(15, len(feature_names))):
         print(f"  {i+1:2d}. {feature_names[indices[i]]:<25s} {importances[indices[i]]:.4f}")
 
     # Save models
     print(f"\nSaving models to {args.output_dir}/...")
-    joblib.dump(rf_model, os.path.join(args.output_dir, 'rf_model.joblib'))
-    joblib.dump(xgb_model, os.path.join(args.output_dir, 'xgb_model.joblib'))
-    joblib.dump(feature_names, os.path.join(args.output_dir, 'feature_names.joblib'))
+    metadata = {
+        'dataset_path': os.path.abspath(args.dataset_path),
+        'rows': int(len(df)),
+        'label_counts': {str(int(k)): int(v) for k, v in df['strength'].value_counts().sort_index().items()},
+        'features': feature_names,
+        'random_state': 42,
+        'models': ['RandomForestClassifier', 'XGBClassifier'],
+    }
+    metadata_path = os.path.join(args.output_dir, 'training_metadata.json')
+    with open(metadata_path, 'w', encoding='utf-8') as metadata_file:
+        json.dump(metadata, metadata_file, indent=2)
+    print(f"Saved training metadata checkpoint to {metadata_path}.")
 
     print("\n" + "="*60)
     print("Training complete! Models saved.")
