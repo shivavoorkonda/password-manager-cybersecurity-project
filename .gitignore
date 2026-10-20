@@ -1,5 +1,7 @@
 # Dependency directories
 node_modules/
+.venv/
+venv/
 .pnp
 .pnp.js
 
