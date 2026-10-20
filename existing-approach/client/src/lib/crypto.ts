@@ -55,7 +55,7 @@ export async function deriveKey(masterPassword: string, salt: Uint8Array, iterat
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    true,
+    false,
     ['encrypt', 'decrypt']
   );
 }

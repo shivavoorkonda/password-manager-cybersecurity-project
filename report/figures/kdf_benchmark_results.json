@@ -1,0 +1,61 @@
+{
+  "purpose": "Local CPU derivation-latency comparison; not a cracking/GPU benchmark",
+  "runs_per_configuration": 10,
+  "warmup_runs": 1,
+  "output_length_bytes": 32,
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+  "python": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+  "cpu_count": 12,
+  "results": [
+    {
+      "configuration": "PBKDF2-HMAC-SHA256, 100,000 iterations",
+      "runs": 10,
+      "mean_ms": 66.78241999470629,
+      "median_ms": 58.305449987528846,
+      "stdev_ms": 19.088526690408358
+    },
+    {
+      "configuration": "PBKDF2-HMAC-SHA256, 300,000 iterations",
+      "runs": 10,
+      "mean_ms": 185.69155999575742,
+      "median_ms": 184.95779996737838,
+      "stdev_ms": 18.727523821907397
+    },
+    {
+      "configuration": "PBKDF2-HMAC-SHA256, 600,000 iterations",
+      "runs": 10,
+      "mean_ms": 367.5909099983983,
+      "median_ms": 368.4539000096265,
+      "stdev_ms": 30.706982652838143
+    },
+    {
+      "configuration": "PBKDF2-HMAC-SHA256, 1,000,000 iterations",
+      "runs": 10,
+      "mean_ms": 597.9644400067627,
+      "median_ms": 599.2423499992583,
+      "stdev_ms": 39.33772968847659
+    },
+    {
+      "configuration": "Argon2id, m=19456 KiB, t=2, p=1",
+      "runs": 10,
+      "mean_ms": 39.88532001385465,
+      "median_ms": 38.68279999005608,
+      "stdev_ms": 3.7117047005241735
+    },
+    {
+      "configuration": "Argon2id, m=47104 KiB, t=1, p=1",
+      "runs": 10,
+      "mean_ms": 65.64855999313295,
+      "median_ms": 67.17444999958389,
+      "stdev_ms": 9.260389217776833
+    },
+    {
+      "configuration": "Argon2id, m=65536 KiB, t=3, p=1",
+      "runs": 10,
+      "mean_ms": 197.75728000095114,
+      "median_ms": 190.26755000231788,
+      "stdev_ms": 18.944434554616485
+    }
+  ]
+}

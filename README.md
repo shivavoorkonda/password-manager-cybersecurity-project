@@ -1,47 +1,39 @@
-# Password Manager Security Enhancement Project
+# Secure Password Manager project
 
-## Enhancing Password Manager Security: ML-Based Strength Classification and Breach-Exposure Detection
+Application-based cybersecurity project using the IJRASET paper “Password Manager” as an application-level baseline: Mahesh Kanjikar et al., Volume 13, Issue XII, December 2025, DOI [10.22214/ijraset.2025.76363](https://doi.org/10.22214/ijraset.2025.76363).
 
-**Course:** Cyber Security (Application-Based Project)  
-**Base Paper:** "Password Manager" (IJRASET, Vol 13, Issue XII, Dec 2025, DOI: 10.22214/ijraset.2025.76363)
+The paper describes a password manager and says it includes strength analysis, but it does not define that algorithm or publish classifier accuracy/F1 results. This project adds an app rule meter, zxcvbn, a Random Forest/XGBoost experiment, and a Have I Been Pwned (HIBP) lookup. Do not label the project metrics as paper results.
 
----
+## What is in this repository
 
-## Project Overview
+- **React browser vault:** encrypts vault entries with AES-256-GCM and derives the key with PBKDF2-HMAC-SHA256 (600,000 iterations). Encrypted entries are stored in this browser's `localStorage`.
+- **Strength panel:** shows the app's rule meter and zxcvbn, and calls the local Flask ML service for an optional trained model prediction.
+- **HIBP check:** browser-side SHA-1 k-anonymity range lookup; only the first five hash characters are sent to HIBP.
+- **Node/PostgreSQL backend:** separate scaffold; the current frontend vault does not use it for login, storage, or sync.
+- **Argon2id benchmark:** standalone PBKDF2-vs-Argon2id timing script. The vault still uses PBKDF2.
 
-This project implements and evaluates a zero-knowledge password manager, identifies its limitations, and proposes three improvements:
-1. **ML-Based Password Strength Classifier** (Random Forest + XGBoost) to replace the paper's rule-based meter
-2. **Privacy-Preserving Breach Check** using HIBP Pwned Passwords API with k-anonymity
-3. **Argon2id vs PBKDF2 Benchmark** comparing key derivation function resistance
+This is a class prototype, not an audited production password manager. The ML service receives the password in plaintext over loopback. Do not expose it to a network or enter real account passwords during demos.
 
----
+## Latest supplied model comparison
 
-## Prerequisites
+These values came from the `model_comparison.csv` in the ZIP supplied by the project owner. Training used source-derived labels and a held-out split; these numbers are not paper scores or measurements of real-world crack resistance.
 
-- **Node.js** 20 LTS or later — https://nodejs.org/
-- **Python** 3.10+ — https://www.python.org/
-- **PostgreSQL** 16 — https://www.postgresql.org/ (optional: the frontend works standalone with localStorage)
-- **Git** — https://git-scm.com/
+| Method | Accuracy (%) | Macro F1 (%) |
+|---|---:|---:|
+| Existing app rule meter | 69.45 | 62.63 |
+| zxcvbn | 84.29 | 84.19 |
+| Random Forest | 95.84 | 95.82 |
+| XGBoost | 86.65 | 86.07 |
 
----
+The ZIP reported Random Forest as the best model but omitted its model file, and the included XGBoost pickle failed to load in the local environment. **The reported best model is not installed from that ZIP.** The updated notebook saves the RF artifact and portable XGBoost JSON; rerun it in Kaggle before installing its new ZIP. The experiment's common-password lists supply weak labels by source membership, while the strength CSV supplies its own labels, so the evaluation measures agreement with these labels and this split.
 
-## Quick Start
+## Run the frontend and local ML service
 
-### Step 1: Check the Included Datasets
+Prerequisites: Node.js 20+, Python 3.10+, and Git. PostgreSQL is not needed for the browser vault or ML panel.
 
-This repository already includes `password_strength.csv`, `rockyou.txt`,
-`top10k-common-passwords.csv`, and `xato-net-10-million-passwords.csv` under
-`datasets/`. Review each source's license and provenance before redistribution.
-Do not enter any real account password into training data or demo examples.
+### 1. Start the ML service
 
-| File | Source | Save As |
-|------|--------|---------|
-| Password Strength Dataset (if missing) | [Kaggle (bhavikbb)](https://www.kaggle.com/datasets/bhavikbb/password-strength-classifier-dataset) | `datasets/password_strength.csv` |
-| RockYou wordlist (if missing) | An authorized copy of the RockYou list | `datasets/rockyou.txt` |
-
-### Step 2: Start the ML service and frontend
-
-In one terminal:
+In PowerShell, from the repository root:
 
 ```powershell
 cd proposed-improvement/ml-model
@@ -49,12 +41,11 @@ python -m pip install -r requirements.txt
 python serve_model.py
 ```
 
-The ML API binds to `127.0.0.1:5000`; it accepts the password in plaintext
-over loopback for local inference. Do not expose or deploy this endpoint as-is.
-HIBP lookup is performed in the browser and sends only the first five SHA-1
-characters to the HIBP range API.
+Keep this terminal open. Visit `http://127.0.0.1:5000/health`. For ML to work, the response must show `"model_loaded": true`; also note the selected model and dictionary entry count. If it says false, the frontend can still run, but its ML panel will show an error until a compatible trained artifact is installed.
 
-In a second terminal:
+### 2. Start the React app
+
+Open a second PowerShell window at the repository root:
 
 ```powershell
 cd existing-approach/client
@@ -62,145 +53,54 @@ npm install
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+Open `http://localhost:5173`. Create a demo vault, add a fake test credential, and confirm the rule meter, zxcvbn, ML result (when loaded), and HIBP status separately. HIBP requires internet access. The vault is local to this browser profile; clearing site data deletes it.
 
-### Step 3: Set Up the Backend (Optional — frontend works standalone)
+### 3. Check frontend and backend separately
 
-```powershell
-# Create PostgreSQL database first
-# psql -U postgres -c "CREATE DATABASE password_manager;"
+- **Frontend build/type check:** from `existing-approach/client`, run `node node_modules/typescript/bin/tsc --noEmit` and `npm run build`.
+- **ML API:** while `serve_model.py` runs, open `http://127.0.0.1:5000/health`. A fake input can be sent with:
 
-cd existing-approach/server
-copy .env.example .env
-# Edit .env with your PostgreSQL credentials
-npm install
-npm run db:push
-npm run dev
+  ```powershell
+  Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/predict -ContentType 'application/json' -Body '{"password":"Example-only-NotARealSecret-482!"}'
+  ```
+
+- **Node/PostgreSQL scaffold (optional):** this is not the backend used by the browser vault. It needs a PostgreSQL database and configured `.env` values before it can run. Do not present it as integrated until the frontend is changed to call it and that end-to-end flow is verified.
+
+## Train in Kaggle
+
+Open [`kaggle_password_model_training.ipynb`](proposed-improvement/ml-model/kaggle_password_model_training.ipynb) in Kaggle. Use **Add Data** to attach:
+
+1. `/kaggle/input/datasets/bhavikbb/password-strength-classifier-dataset`
+2. `/kaggle/input/datasets/wjburns/common-password-list-rockyoutxt`
+3. `/kaggle/input/datasets/shivamb/10000-most-common-passwords`
+4. `/kaggle/input/datasets/joebeachcapital/top-10-million-passwords`
+
+Then choose **Run All**. The notebook discovers inputs under `/kaggle/input`, saves checkpoints through preparation/training/evaluation/packaging, and creates `/kaggle/working/password-manager-kaggle-model.zip`. Download that ZIP from Kaggle's Output panel. It should contain `rf_model.joblib`, portable `xgb_model.json`, `feature_names.joblib`, `training_metadata.json`, `model_comparison.csv`, and the matching `dictionary.txt`. Keep the notebook and output private because the dictionary contains password strings. Do not put raw password lists or the dictionary in a public GitHub commit.
+
+For local integration, extract the ZIP into `proposed-improvement/ml-model/models/`, replacing the model artifacts as a matching set. Restart `python serve_model.py`, verify `model_loaded` and `model` at `/health`, then use the UI. Do not mix files from different training runs.
+
+The Kaggle datasets and label/split limitations are described in [`datasets/README.md`](datasets/README.md). The detailed implementation audit is [`README_CYBER_DOMAIN_EXPERT.md`](README_CYBER_DOMAIN_EXPERT.md).
+
+## Optional components
+
+### Node/PostgreSQL scaffold
+
+The Node server at `existing-approach/server` is currently separate from the local browser vault. Its configuration requires PostgreSQL, a `DATABASE_URL`, and a strong `SESSION_SECRET`. The service must not be exposed publicly with development settings.
+
+### Argon2id benchmark
+
+The script at `proposed-improvement/argon2-benchmark/benchmark_kdf.py` is a separate CPU timing experiment. Install its dependencies with `python -m pip install -r requirements.txt` and run `python benchmark_kdf.py` from that directory. The current run on Windows 11 (Intel processor; Python version and platform details are recorded in `report/figures/kdf_benchmark_results.json`) measured median PBKDF2-HMAC-SHA256 at 600,000 iterations as 368.45 ms and Argon2id at 65,536 KiB, t=3, p=1 as 190.27 ms. This compares local derivation latency for the chosen configurations; it does not measure GPU cracking performance or equivalent work. The vault still uses PBKDF2.
+
+## Project map
+
+```text
+existing-approach/client/                 React + TypeScript app and local browser vault
+existing-approach/server/                 Separate Express/PostgreSQL scaffold
+proposed-improvement/ml-model/            Kaggle notebook, feature extraction, Flask API
+proposed-improvement/hibp-integration/    Browser HIBP range lookup
+proposed-improvement/argon2-benchmark/    Standalone KDF benchmark
+datasets/                                 Existing tracked research inputs and notes
+report/                                   Academic project report
 ```
 
-Server runs at `http://localhost:3001`.
-
-### Step 4: Rebuild datasets and retrain (optional)
-
-```powershell
-cd proposed-improvement/ml-model
-pip install -r requirements.txt
-
-# Rebuild combined_train.csv, clean_test.csv, and dictionary.txt from the
-# checked-in sources. Labels for RockYou/top10k are source-based weak labels;
-# Xato labels are generated by a heuristic, not human-verified ground truth.
-python prepare_data.py
-
-# Train RF and XGBoost on the prepared dataset and dictionary
-python train_model.py --dataset-path ../../datasets/combined_train.csv --dict-path ../../datasets/dictionary.txt --output-dir models
-
-# Evaluate and generate figures
-python evaluate_model.py
-
-# Start the ML API server
-python serve_model.py
-```
-
-ML API is available locally at `http://127.0.0.1:5000`. The browser strength
-meter uses its `/api/predict` endpoint through Vite's `/ml-api` proxy.
-
-Do not treat existing report metrics as independently verified. Re-run
-`evaluate_model.py` after training; report the resulting metrics and dataset
-counts, and record the split seed and source labels used. The current pipeline
-contains heuristic and source-derived labels, so its scores measure agreement
-with those labels rather than real-world crack resistance.
-
-### Train the model in Kaggle
-
-Open [`kaggle_password_model_training.ipynb`](proposed-improvement/ml-model/kaggle_password_model_training.ipynb)
-in Kaggle. Use **Add Data** to attach Kaggle's [Password Strength Classifier
-Dataset](https://www.kaggle.com/datasets/bhavikbb/password-strength-classifier-dataset)
-and [Common Password List (rockyou.txt)](https://www.kaggle.com/datasets/wjburns/common-password-list-rockyoutxt).
-The notebook clones this public repository for its training code and the Xato
-and top-10k CSVs, so you do not need to upload a combined custom dataset. Enable
-Internet for the clone and package install; keep the notebook private and run
-the cells in order. The notebook saves a checkpoint after input inventory,
-data preparation, each model's training completion, evaluation, and packaging.
-The small local RockYou Git LFS pointer is not the dataset; use the Kaggle
-dataset attached in **Add Data**.
-
-At the end, use Kaggle's **Save Version → Save & Run All** and download the
-private `password-manager-kaggle-model.zip` output. It contains
-`xgb_model.joblib`, `feature_names.joblib`, training metadata, evaluation logs,
-and figures; it excludes the prepared password CSVs and dictionary. Keep all
-Kaggle inputs and outputs private because the source data contains leaked or
-common passwords. Attach the zip in this chat for model compatibility checks
-and integration into the local API.
-
-### Step 5: Run KDF Benchmark
-
-```powershell
-cd proposed-improvement/argon2-benchmark
-pip install argon2-cffi matplotlib numpy
-
-python benchmark_kdf.py
-```
-
-Results and charts are saved to `report/figures/`.
-
----
-
-## API Endpoints (ML Server)
-
-| Method | Endpoint | Body | Returns |
-|--------|----------|------|---------|
-| POST | `/api/predict` | `{"password": "test123"}` | `{"strength": 0, "label": "weak", "confidence": 0.95}` |
-| POST | `/api/check-breach` | `{"password": "password"}` | `{"breached": true, "count": 10434572}` |
-| POST | `/api/analyze` | `{"password": "P@ssw0rd"}` | Combined analysis from all 4 methods |
-| GET | `/health` | — | `{"status": "ok"}` |
-
----
-
-## Screenshots to Capture for Report
-
-1. Login/Registration screen
-2. Password vault view with stored entries
-3. Password generator with options
-4. Strength meter showing rule-based vs zxcvbn side by side
-5. Add password form
-6. Database view showing encrypted ciphertext (pgAdmin or psql)
-7. ML API response for a weak password (e.g., `P@ssw0rd1!`)
-8. ML API response for a strong password
-9. HIBP breach check response
-10. Generated charts (confusion matrix, ROC curve, feature importance, comparison)
-11. KDF benchmark bar chart
-
----
-
-## Project Structure
-
-```
-password-manager-project/
-├── existing-approach/
-│   ├── client/          # React + TypeScript frontend (17 files)
-│   └── server/          # Express.js + PostgreSQL backend (8 files)
-├── proposed-improvement/
-│   ├── ml-model/        # Python ML pipeline (5 files)
-│   ├── hibp-integration/# TypeScript HIBP check module
-│   └── argon2-benchmark/# KDF benchmarking script
-├── datasets/            # Downloaded datasets (not in git)
-├── report/figures/      # Generated charts and graphs
-├── PROJECT_STRUCTURE.md
-└── README.md            # This file
-```
-
----
-
-## Key Files
-
-| File | Description |
-|------|-------------|
-| `client/src/lib/crypto.ts` | AES-256-GCM encryption + PBKDF2 key derivation |
-| `client/src/lib/strengthChecker.ts` | Rule-based + zxcvbn strength checkers |
-| `server/src/schema.ts` | PostgreSQL schema (Drizzle ORM) |
-| `ml-model/features.py` | 15-feature extraction from passwords |
-| `ml-model/train_model.py` | Random Forest + XGBoost training |
-| `ml-model/evaluate_model.py` | Metrics, confusion matrix, ROC, comparison |
-| `ml-model/serve_model.py` | Flask API with ML + HIBP endpoints |
-| `hibp-integration/hibp_check.ts` | Client-side k-anonymity breach check |
-| `argon2-benchmark/benchmark_kdf.py` | PBKDF2 vs Argon2id timing comparison |
+The notebook's 95.84% Random Forest accuracy is the strongest result in the supplied comparison, but it still needs a fresh reproducible run and a successfully packaged RF artifact before that candidate can be installed and demonstrated.

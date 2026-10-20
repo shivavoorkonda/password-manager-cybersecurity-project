@@ -9,6 +9,7 @@ interface StrengthMeterProps {
 interface MlResult {
   label: string;
   confidence: number;
+  model: string;
 }
 
 const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
@@ -52,13 +53,13 @@ export const StrengthMeter: React.FC<StrengthMeterProps> = ({ password }) => {
         });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || `ML service returned ${response.status}`);
-        setMlResult({ label: body.label, confidence: body.confidence });
+        setMlResult({ label: body.label, confidence: body.confidence, model: body.model || 'ML' });
       } catch (error) {
         if (!controller.signal.aborted) setMlError(error instanceof Error ? error.message : 'ML analysis unavailable');
       }
 
       try {
-        setBreach(await checkPasswordBreach(password));
+        setBreach(await checkPasswordBreach(password, controller.signal));
       } catch (error) {
         if (!controller.signal.aborted) setBreachError(error instanceof Error ? error.message : 'Breach check unavailable');
       }
@@ -83,7 +84,7 @@ export const StrengthMeter: React.FC<StrengthMeterProps> = ({ password }) => {
       </div>
       <div className="text-xs text-gray-300" aria-live="polite">
         <strong>ML model:</strong>{' '}
-        {mlResult ? `${mlResult.label} (${(mlResult.confidence * 100).toFixed(1)}% model confidence)` : mlError || 'Analyzing…'}
+        {mlResult ? `${mlResult.model}: ${mlResult.label} (${(mlResult.confidence * 100).toFixed(1)}% model confidence)` : mlError || 'Analyzing…'}
       </div>
       <div className="text-xs text-gray-300" aria-live="polite">
         <strong>Have I Been Pwned:</strong>{' '}

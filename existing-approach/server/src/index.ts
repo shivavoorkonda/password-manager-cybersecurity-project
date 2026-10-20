@@ -8,11 +8,15 @@ import { router } from './routes.js';
 
 dotenv.config();
 
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error('Set SESSION_SECRET to a random value of at least 32 characters.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy if behind one
-app.set('trust proxy', 1);
+// Only trust a reverse proxy when the deployment explicitly enables it.
+if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -29,7 +33,7 @@ app.use(session({
     tableName: 'session',
     createTableIfMissing: true
   }),
-  secret: process.env.SESSION_SECRET || 'fallback_secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {

@@ -1,101 +1,108 @@
-import time
-import os
+"""Compare local PBKDF2 and Argon2id derivation latency.
+
+This is a CPU timing exercise for fixed parameters, not a password-cracking or
+GPU-resistance benchmark. Results are machine-dependent and are written with
+platform metadata for reproducibility.
+"""
+
+from __future__ import annotations
+
 import hashlib
+import json
+import os
+import platform
+import statistics
+import sys
+import time
+from pathlib import Path
+
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
-from argon2 import PasswordHasher
+from argon2.low_level import Type, hash_secret_raw
 
-def benchmark_pbkdf2(iterations_list, password=b"test_password", salt=b"test_salt", runs=10):
-    results = {}
-    for iters in iterations_list:
-        times = []
-        for _ in range(runs):
-            start = time.perf_counter()
-            hashlib.pbkdf2_hmac('sha256', password, salt, iters)
-            times.append(time.perf_counter() - start)
-        results[f"PBKDF2-{iters}"] = {'mean': np.mean(times), 'std': np.std(times)}
-    return results
 
-def benchmark_argon2(configs, password="test_password", runs=10):
-    results = {}
-    for mem, time_cost, parallelism in configs:
-        times = []
-        ph = PasswordHasher(time_cost=time_cost, memory_cost=mem, parallelism=parallelism)
-        for _ in range(runs):
-            start = time.perf_counter()
-            ph.hash(password)
-            times.append(time.perf_counter() - start)
-        label = f"Argon2-m{mem}-t{time_cost}-p{parallelism}"
-        results[label] = {'mean': np.mean(times), 'std': np.std(times)}
-    return results
+ROOT = Path(__file__).resolve().parents[2]
+OUTPUT_DIR = ROOT / "report" / "figures"
+PASSWORD = b"benchmark-only-not-a-real-password"
+SALT = b"project-benchmark-salt-v1"
+RUNS = 10
 
-def plot_benchmarks(results, output_path):
-    labels = list(results.keys())
-    means = [results[k]['mean'] * 1000 for k in labels] # to ms
-    stds = [results[k]['std'] * 1000 for k in labels]
-    
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, means, yerr=stds, capsize=5, color='skyblue', edgecolor='black')
-    plt.ylabel('Time (ms)')
-    plt.title('KDF Derivation Time Benchmark')
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
 
-def plot_table(results, output_path):
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.axis('off')
-    
-    col_labels = ['KDF Configuration', 'Mean Time (ms)', 'Std Dev (ms)']
-    cell_text = []
-    for k, v in results.items():
-        cell_text.append([k, f"{v['mean']*1000:.2f}", f"{v['std']*1000:.2f}"])
-        
-    table = ax.table(cellText=cell_text, colLabels=col_labels, loc='center', cellLoc='center')
-    table.scale(1, 1.5)
-    plt.title('KDF Benchmark Results')
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
+def measure(label: str, operation, runs: int = RUNS) -> dict[str, float | int | str]:
+    operation()  # warm-up; excluded from the measurements
+    samples = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        operation()
+        samples.append(time.perf_counter() - start)
+    return {
+        "configuration": label,
+        "runs": runs,
+        "mean_ms": statistics.mean(samples) * 1000,
+        "median_ms": statistics.median(samples) * 1000,
+        "stdev_ms": statistics.stdev(samples) * 1000 if len(samples) > 1 else 0.0,
+    }
 
-def main():
-    pbkdf2_iters = [100000, 300000, 600000, 1000000]
-    argon2_configs = [
-        (19456, 2, 1),
-        (47104, 1, 1),
-        (65536, 3, 4)
-    ]
-    
-    print("Benchmarking PBKDF2-HMAC-SHA256...")
-    pbkdf2_res = benchmark_pbkdf2(pbkdf2_iters)
-    
-    print("Benchmarking Argon2id...")
-    argon2_res = benchmark_argon2(argon2_configs)
-    
-    all_results = {**pbkdf2_res, **argon2_res}
-    
-    os.makedirs('../../report/figures', exist_ok=True)
-    
-    print("\nGenerating charts...")
-    plot_benchmarks(all_results, '../../report/figures/kdf_benchmark_bar.png')
-    plot_table(all_results, '../../report/figures/kdf_benchmark_table.png')
-    
-    print("\nBenchmark Results Table:")
-    print("-" * 65)
-    print(f"| {'Configuration':<30} | {'Mean (ms)':<12} | {'Std (ms)':<12} |")
-    print("-" * 65)
-    for k, v in all_results.items():
-        print(f"| {k:<30} | {v['mean']*1000:<12.2f} | {v['std']*1000:<12.2f} |")
-    print("-" * 65)
-    
-    print("\nDiscussion on GPU Resistance:")
-    print("PBKDF2 is heavily CPU-bound and lacks memory-hardness. Attackers with GPUs/ASICs")
-    print("can parallelize the simple operations efficiently, greatly accelerating cracking speed.")
-    print("Argon2id, on the other hand, introduces memory-hardness (memory_cost). By forcing the")
-    print("computation to read/write large blocks of memory pseudo-randomly, it creates a memory")
-    print("bandwidth bottleneck. Since GPUs have less memory per core compared to CPUs, their")
-    print("parallelization advantage is significantly reduced, offering robust GPU resistance.")
 
-if __name__ == '__main__':
+def main() -> None:
+    cases = []
+    for iterations in (100_000, 300_000, 600_000, 1_000_000):
+        cases.append(measure(
+            f"PBKDF2-HMAC-SHA256, {iterations:,} iterations",
+            lambda it=iterations: hashlib.pbkdf2_hmac("sha256", PASSWORD, SALT, it, dklen=32),
+        ))
+
+    # Memory is in KiB as required by argon2-cffi. These are separate parameter
+    # choices, not equivalent-work settings against PBKDF2.
+    for memory_kib, time_cost, parallelism in (
+        (19_456, 2, 1),
+        (47_104, 1, 1),
+        (65_536, 3, 1),
+    ):
+        cases.append(measure(
+            f"Argon2id, m={memory_kib} KiB, t={time_cost}, p={parallelism}",
+            lambda m=memory_kib, t=time_cost, p=parallelism: hash_secret_raw(
+                PASSWORD, SALT, time_cost=t, memory_cost=m, parallelism=p,
+                hash_len=32, type=Type.ID, version=19,
+            ),
+        ))
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    report = {
+        "purpose": "Local CPU derivation-latency comparison; not a cracking/GPU benchmark",
+        "runs_per_configuration": RUNS,
+        "warmup_runs": 1,
+        "output_length_bytes": 32,
+        "platform": platform.platform(),
+        "processor": platform.processor() or "unspecified",
+        "python": sys.version,
+        "cpu_count": os.cpu_count(),
+        "results": cases,
+    }
+    json_path = OUTPUT_DIR / "kdf_benchmark_results.json"
+    json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    labels = [case["configuration"].replace(", ", "\n") for case in cases]
+    medians = [case["median_ms"] for case in cases]
+    deviations = [case["stdev_ms"] for case in cases]
+    fig, ax = plt.subplots(figsize=(13, 6))
+    ax.bar(range(len(cases)), medians, yerr=deviations, capsize=4, color="#3973ac")
+    ax.set_xticks(range(len(cases)), labels, rotation=20, ha="right")
+    ax.set_ylabel("Median derivation time (ms)")
+    ax.set_title("Local PBKDF2 and Argon2id CPU timing (error bars: standard deviation)")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "kdf_benchmark_bar.png", dpi=160)
+    plt.close(fig)
+
+    print(f"Results: {json_path}")
+    print(f"Platform: {report['platform']}; processor: {report['processor']}")
+    print("This measures local derivation latency only; it does not measure GPU cracking resistance.")
+    for case in cases:
+        print(f"{case['configuration']}: median {case['median_ms']:.2f} ms, "
+              f"mean {case['mean_ms']:.2f} ms, SD {case['stdev_ms']:.2f} ms")
+
+
+if __name__ == "__main__":
     main()

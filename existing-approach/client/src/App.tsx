@@ -17,6 +17,8 @@ export interface VaultEntry {
 
 interface EncryptedVault {
   salt: string;
+  // Authenticated marker so an empty vault can still reject a wrong password.
+  verification?: { ciphertext: string; iv: string };
   entries: {
     id: string;
     ciphertext: string;
@@ -85,6 +87,17 @@ export default function App() {
         const storedVault = JSON.parse(storedVaultRaw) as EncryptedVault;
         const salt = Uint8Array.from(atob(storedVault.salt), c => c.charCodeAt(0));
         key = await deriveKey(masterPassword, salt);
+
+        if (storedVault.verification) {
+          const marker = await decrypt(
+            storedVault.verification.ciphertext,
+            storedVault.verification.iv,
+            key
+          );
+          if (marker !== 'secure-password-manager-vault-v1') {
+            throw new Error('Vault verification failed.');
+          }
+        }
         
         // Attempt decryption to verify password
         try {
@@ -97,6 +110,17 @@ export default function App() {
         } catch (err) {
           throw new Error("Invalid master password or corrupted vault.");
         }
+
+        // Upgrade older vaults after successful authentication. For legacy
+        // non-empty vaults, entry decryption proves the key; an empty legacy
+        // vault had no verifier and contains no protected entries to recover.
+        if (!storedVault.verification) {
+          const upgradedVault: EncryptedVault = {
+            ...storedVault,
+            verification: await encrypt('secure-password-manager-vault-v1', key),
+          };
+          localStorage.setItem('zk_vault', JSON.stringify(upgradedVault));
+        }
       } else {
         // Initialize new vault
         const salt = generateSalt();
@@ -105,6 +129,7 @@ export default function App() {
         // Save empty structure to lock in the salt
         const emptyVault: EncryptedVault = {
           salt: btoa(String.fromCharCode(...salt)),
+          verification: await encrypt('secure-password-manager-vault-v1', key),
           entries: []
         };
         localStorage.setItem('zk_vault', JSON.stringify(emptyVault));
@@ -136,6 +161,7 @@ export default function App() {
       
       const newStoredVault: EncryptedVault = {
         salt: storedVault.salt,
+        verification: storedVault.verification ?? await encrypt('secure-password-manager-vault-v1', key),
         entries: encryptedEntries
       };
       

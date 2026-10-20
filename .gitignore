@@ -36,4 +36,6 @@ Thumbs.db
 # Ensure all datasets and models are tracked
 !datasets/
 !proposed-improvement/ml-model/models/
+# Keep the training dictionary from Kaggle output local; it contains passwords.
+proposed-improvement/ml-model/models/dictionary.txt
 

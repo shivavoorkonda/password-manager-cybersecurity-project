@@ -26,18 +26,19 @@ from features import extract_all_features
 
 
 def rule_based_predict(password: str) -> int:
-    """Paper's naive rule-based strength checker. Returns 0/1/2."""
+    """Map the current React rule meter to weak/medium/strong (0/1/2)."""
     if not password:
         return 0
-    score = 0
-    if len(password) >= 8: score += 1
-    if len(password) >= 12: score += 1
-    if re.search(r'[A-Z]', password): score += 1
-    if re.search(r'[a-z]', password): score += 1
-    if re.search(r'\d', password): score += 1
-    if re.search(r'[^A-Za-z0-9]', password): score += 1
-    if score < 3: return 0
-    if score < 5: return 1
+    raw_score = int(len(password) >= 12)
+    raw_score += int(bool(re.search(r'[A-Z]', password)))
+    raw_score += int(bool(re.search(r'[a-z]', password)))
+    raw_score += int(bool(re.search(r'[0-9]', password)))
+    raw_score += int(bool(re.search(r'[^A-Za-z0-9]', password)))
+    ui_score = min(4, raw_score * 4 // 5)
+    if ui_score <= 1:
+        return 0
+    if ui_score == 2:
+        return 1
     return 2
 
 

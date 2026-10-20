@@ -1,7 +1,7 @@
 /**
  * HIBP k-anonymity check via Web Crypto API.
  */
-export async function checkPasswordBreach(password: string): Promise<{breached: boolean, count: number}> {
+export async function checkPasswordBreach(password: string, signal?: AbortSignal): Promise<{breached: boolean, count: number}> {
     if (!password) {
         return { breached: false, count: 0 };
     }
@@ -21,6 +21,9 @@ export async function checkPasswordBreach(password: string): Promise<{breached: 
 
         // Fetch using k-anonymity
         const controller = new AbortController();
+        const abortFromCaller = () => controller.abort();
+        if (signal?.aborted) controller.abort();
+        signal?.addEventListener('abort', abortFromCaller, { once: true });
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
 
         let response: Response;
@@ -31,6 +34,7 @@ export async function checkPasswordBreach(password: string): Promise<{breached: 
             });
         } finally {
             clearTimeout(timeoutId);
+            signal?.removeEventListener('abort', abortFromCaller);
         }
 
         if (!response.ok) {
