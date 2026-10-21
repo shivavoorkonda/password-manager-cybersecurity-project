@@ -165,6 +165,10 @@ The Flask API serves the selected model locally. The browser strength panel disp
 
 The reported comparison uses accuracy and macro-F1. Accuracy is the fraction of correct predictions. Macro-F1 is the unweighted average of the per-class F1 scores, so each class contributes equally. Results below are taken from the supplied Kaggle ZIP’s model_comparison.csv; they are not measurements reported in the base paper.
 
+### 6.4 Smart password recommendation engine
+
+When the ML model classifies a password as weak or medium, the local service generates up to three personalized strong alternatives. It parses alphabetic, numeric, and symbol components; applies five style-preserving mutations; and validates each candidate through the packaged classifier. Only candidates classified as Strong with at least 85% model confidence are returned. Random additions use Python’s `secrets` CSPRNG. Passwords are processed in memory and not logged or persisted; the endpoint is bound to loopback. This is an academic prototype: production use should add request throttling and should prefer a password generator where retaining an input pattern is undesirable.
+
 ## 7. Results and Analysis
 
 ### 7.1 Password-strength model comparison
@@ -177,6 +181,24 @@ The reported comparison uses accuracy and macro-F1. Accuracy is the fraction of 
 | XGBoost | 86.65 | 86.07 |
 
 ![Accuracy and macro-F1 for the four password-strength estimators on the supplied Kaggle evaluation split.](figures/comparison_bar_chart.png)
+
+![Confusion matrix for Random Forest on the evaluation split.](figures/confusion_matrix_rf.png)
+
+**Figure 3.** Random Forest confusion matrix on the locally reconstructed standard evaluation split.
+
+![Confusion matrix for XGBoost on the evaluation split.](figures/confusion_matrix_xgb.png)
+
+**Figure 4.** XGBoost confusion matrix.
+
+![Top 15 feature importances for Random Forest and XGBoost.](figures/feature_importance.png)
+
+**Figure 5.** Feature importance comparison.
+
+![ROC-AUC curves (one-vs-rest) for Random Forest and XGBoost.](figures/roc_curve.png)
+
+**Figure 6.** ROC-AUC curves for both classifiers.
+
+The figure-generation script reconstructs a local split from the full available dataset. Its plots are useful for the demonstration but do not exactly reproduce the archived Kaggle `model_comparison.csv` summary below; the table remains explicitly attributed to that supplied artifact.
 
 In this supplied run, Random Forest exceeds the app’s rule meter by 26.39 percentage points in accuracy and 33.19 points in macro-F1. It exceeds zxcvbn by 11.54 accuracy points and 11.63 macro-F1 points. XGBoost is lower than Random Forest on both reported measures. These are differences within this experiment and split, not improvements over the base paper.
 
@@ -196,11 +218,17 @@ The frontend TypeScript/Vite production build completed successfully. Vite serve
 
 The build reported a JavaScript bundle of about 985 kB before gzip and warned that it exceeds Vite's 500 kB chunk-size advisory. The browser add/save/reopen/auto-lock interaction and a live HIBP network lookup remain in the manual demonstration checklist; they are not claimed as verified by this startup/API check.
 
+### 7.5 Recommendation engine
+
+The `/api/recommend` endpoint returns up to three personalized strong alternatives for weak or medium passwords. Each returned candidate is validated by the trained model and must achieve Strong classification with at least 85% model confidence. One request can perform up to 50 candidate validations (five strategies and up to ten retries per strategy). No rate limiting is applied in this academic loopback prototype; a production deployment should add request throttling.
+
 ## 8. Conclusion
 
 This project implements a browser-based Secure Password Manager prototype and adds two password-risk feedback features: an ML strength estimate and a HIBP exposure lookup. It uses the IJRASET 2025 paper as an application-level baseline. The paper describes a password manager and mentions strength analysis, but supplies no classifier algorithm, dataset, or accuracy/F1 results; a numerical improvement over the paper therefore cannot be claimed.
 
 In the supplied experiment, Random Forest produced the highest reported accuracy (95.83%) and macro-F1 (95.82%) among the compared project methods. This is a promising result for the particular source-labelled split, with methodological limitations that require a separate validation and untouched final test before broader claims. The implementation demonstrates an application, identifies its current limitations, and evaluates a proposed extension, as required for an application-based project.
+
+The system also implements an active recommendation engine that generates personalized strong-password alternatives from the user’s input pattern, validated through the same packaged classifier.
 
 The current repository is a class prototype. The browser vault uses local storage, the ML service receives plaintext locally, and the Node/PostgreSQL scaffold is not integrated. Those boundaries must be disclosed during the demonstration.
 
@@ -224,3 +252,4 @@ The current repository is a class prototype. The browser vault uses local storag
 4. Lock and unlock the vault, then verify the fake entry remains available.
 5. Show that the vault data is browser-local and encrypted; explain that the Node/PostgreSQL scaffold is separate.
 6. Do not enter real account passwords in the ML demo: the local inference service receives its input password in plaintext.
+7. Type a weak password (for example, `shiva@1234`) and verify the recommendation panel shows strong alternatives with confidence scores and copy buttons. Type a strong password and verify no recommendations appear.

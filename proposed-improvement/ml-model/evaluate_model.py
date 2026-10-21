@@ -86,7 +86,22 @@ def main():
     # Load models
     print("Loading models...")
     rf_model = joblib.load(os.path.join(args.models_dir, 'rf_model.joblib'))
-    xgb_model = joblib.load(os.path.join(args.models_dir, 'xgb_model.joblib'))
+    # Avoid a Windows worker-pool failure during large local evaluation runs.
+    if hasattr(rf_model, 'n_jobs'):
+        rf_model.n_jobs = 1
+    xgb_json_path = os.path.join(args.models_dir, 'xgb_model.json')
+    xgb_joblib_path = os.path.join(args.models_dir, 'xgb_model.joblib')
+    if os.path.isfile(xgb_json_path):
+        from xgboost import XGBClassifier
+        xgb_model = XGBClassifier()
+        xgb_model.load_model(xgb_json_path)
+        print("  XGBoost loaded from .json")
+    elif os.path.isfile(xgb_joblib_path):
+        xgb_model = joblib.load(xgb_joblib_path)
+        print("  XGBoost loaded from .joblib")
+    else:
+        xgb_model = None
+        print("  Warning: No XGBoost model found; XGBoost evaluation will be skipped.")
     feature_names = joblib.load(os.path.join(args.models_dir, 'feature_names.joblib'))
     print("  Models loaded.")
 
@@ -109,9 +124,9 @@ def main():
     passwords_test = df.iloc[X_test.index]['password'].values
 
     rf_preds = rf_model.predict(X_test)
-    xgb_preds = xgb_model.predict(X_test)
+    xgb_preds = xgb_model.predict(X_test) if xgb_model is not None else None
     rf_probs = rf_model.predict_proba(X_test)
-    xgb_probs = xgb_model.predict_proba(X_test)
+    xgb_probs = xgb_model.predict_proba(X_test) if xgb_model is not None else None
 
     print("Running rule-based and zxcvbn...")
     rule_preds = np.array([rule_based_predict(p) for p in passwords_test])
@@ -121,7 +136,7 @@ def main():
         'Rule-Based': evaluate(y_test, rule_preds),
         'zxcvbn': evaluate(y_test, zxcvbn_preds),
         'Random Forest': evaluate(y_test, rf_preds),
-        'XGBoost': evaluate(y_test, xgb_preds),
+        **({'XGBoost': evaluate(y_test, xgb_preds)} if xgb_preds is not None else {}),
     }
 
     # ===== EVALUATION 2: Clean multi-source test set =====
@@ -143,7 +158,7 @@ def main():
         pw_clean = clean_df['password'].values
 
         rf_clean = rf_model.predict(X_clean)
-        xgb_clean = xgb_model.predict(X_clean)
+        xgb_clean = xgb_model.predict(X_clean) if xgb_model is not None else None
         rule_clean = np.array([rule_based_predict(p) for p in pw_clean])
         zxcvbn_clean = np.array([zxcvbn_predict(p) for p in pw_clean])
 
@@ -151,7 +166,7 @@ def main():
             'Rule-Based': evaluate(y_clean, rule_clean),
             'zxcvbn': evaluate(y_clean, zxcvbn_clean),
             'Random Forest': evaluate(y_clean, rf_clean),
-            'XGBoost': evaluate(y_clean, xgb_clean),
+            **({'XGBoost': evaluate(y_clean, xgb_clean)} if xgb_clean is not None else {}),
         }
     except FileNotFoundError:
         print(f"\n[SKIP] Clean test set not found at {args.clean_test_path}")
@@ -160,8 +175,10 @@ def main():
     print(f"\nGenerating figures to {figures_dir}/...")
 
     # 1. Confusion matrices
-    for preds, name, fname in [(rf_preds, 'Random Forest', 'confusion_matrix_rf.png'),
-                                (xgb_preds, 'XGBoost', 'confusion_matrix_xgb.png')]:
+    confusion_plots = [(rf_preds, 'Random Forest', 'confusion_matrix_rf.png')]
+    if xgb_preds is not None:
+        confusion_plots.append((xgb_preds, 'XGBoost', 'confusion_matrix_xgb.png'))
+    for preds, name, fname in confusion_plots:
         cm = confusion_matrix(y_test, preds, labels=[0,1,2])
         plt.figure(figsize=(8,6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
@@ -183,9 +200,10 @@ def main():
         fpr, tpr, _ = roc_curve(y_bin[:,i], rf_probs[:,i])
         plt.plot(fpr, tpr, color=colors[i], linestyle='-', linewidth=2,
                  label=f'RF {labels[i]} (AUC={auc(fpr,tpr):.3f})')
-        fpr2, tpr2, _ = roc_curve(y_bin[:,i], xgb_probs[:,i])
-        plt.plot(fpr2, tpr2, color=colors[i], linestyle='--', linewidth=2,
-                 label=f'XGB {labels[i]} (AUC={auc(fpr2,tpr2):.3f})')
+        if xgb_probs is not None:
+            fpr2, tpr2, _ = roc_curve(y_bin[:,i], xgb_probs[:,i])
+            plt.plot(fpr2, tpr2, color=colors[i], linestyle='--', linewidth=2,
+                     label=f'XGB {labels[i]} (AUC={auc(fpr2,tpr2):.3f})')
     plt.plot([0,1],[0,1],'k--',alpha=0.5)
     plt.xlabel('FPR'); plt.ylabel('TPR')
     plt.title('ROC-AUC (One-vs-Rest)', fontsize=14)
@@ -197,8 +215,15 @@ def main():
 
     # 3. Feature importance
     fig, axes = plt.subplots(1, 2, figsize=(16,8))
-    for ax, model, title, color in [(axes[0], rf_model, 'Random Forest', '#3498db'),
-                                     (axes[1], xgb_model, 'XGBoost', '#e67e22')]:
+    plot_models = [(axes[0], rf_model, 'Random Forest', '#3498db')]
+    if xgb_model is not None and hasattr(xgb_model, 'feature_importances_') and len(xgb_model.feature_importances_) == len(feature_names):
+        plot_models.append((axes[1], xgb_model, 'XGBoost', '#e67e22'))
+    else:
+        axes[1].set_title('XGBoost - Feature chart unavailable')
+        axes[1].text(0.5, 0.5, 'Skipped', ha='center', va='center', fontsize=14)
+        axes[1].set_axis_off()
+        print('  Warning: XGBoost feature importance skipped (model missing or feature count mismatch).')
+    for ax, model, title, color in plot_models:
         imp = model.feature_importances_
         idx = np.argsort(imp)[-15:]
         ax.barh(range(len(idx)), imp[idx], color=color)

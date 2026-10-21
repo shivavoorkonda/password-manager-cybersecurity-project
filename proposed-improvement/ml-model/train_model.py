@@ -82,6 +82,8 @@ def main():
                         help='Path to merged dictionary')
     parser.add_argument('--output-dir', type=str, default='models',
                         help='Directory to save trained models')
+    parser.add_argument('--n-jobs', type=int, default=1,
+                        help='Parallel workers for training (default: 1 for Windows reliability)')
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
@@ -132,7 +134,7 @@ def main():
     print("Training Random Forest (n_estimators=200, max_depth=20)...")
     print("="*60)
     rf_model = RandomForestClassifier(
-        n_estimators=200, max_depth=20, random_state=42, n_jobs=-1
+        n_estimators=200, max_depth=20, random_state=42, n_jobs=args.n_jobs
     )
     rf_model.fit(X_train, y_train)
     save_checkpoint(rf_model, os.path.join(args.output_dir, 'rf_model.joblib'))
@@ -148,7 +150,7 @@ def main():
     print("="*60)
     xgb_model = xgb.XGBClassifier(
         n_estimators=200, max_depth=8, learning_rate=0.1,
-        random_state=42, n_jobs=-1, eval_metric='mlogloss'
+        random_state=42, n_jobs=args.n_jobs, eval_metric='mlogloss'
     )
     xgb_model.fit(X_train, y_train)
     save_checkpoint(xgb_model, os.path.join(args.output_dir, 'xgb_model.joblib'))

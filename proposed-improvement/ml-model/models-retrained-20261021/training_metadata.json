@@ -1,0 +1,33 @@
+{
+  "dataset_path": "C:\\Users\\shiva\\ICS\\password-manager-project\\datasets\\combined_train.csv",
+  "rows": 660565,
+  "label_counts": {
+    "0": 180987,
+    "1": 401723,
+    "2": 77855
+  },
+  "features": [
+    "length",
+    "entropy",
+    "count_uppercase",
+    "ratio_uppercase",
+    "count_lowercase",
+    "ratio_lowercase",
+    "count_digits",
+    "ratio_digits",
+    "count_symbols",
+    "ratio_symbols",
+    "count_unique_chars",
+    "ratio_unique_chars",
+    "sequences",
+    "repeats",
+    "transitions",
+    "dictionary_hit",
+    "common_patterns"
+  ],
+  "random_state": 42,
+  "models": [
+    "RandomForestClassifier",
+    "XGBClassifier"
+  ]
+}

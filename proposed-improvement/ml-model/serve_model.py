@@ -5,6 +5,8 @@ import hashlib
 import requests
 import joblib
 import pandas as pd
+import secrets
+import string
 from flask import Flask, request, jsonify
 from features import extract_all_features
 from zxcvbn import zxcvbn
@@ -127,37 +129,132 @@ def parse_password_payload():
         return None, (jsonify({"error": "password must not be empty"}), 400)
     return data['password'], None
 
+
+def _model_result(password: str):
+    """Classify a password without retaining or logging it."""
+    if model is None:
+        return None
+    features = extract_all_features(password, dictionary)
+    frame = pd.DataFrame([features])
+    if feature_names:
+        for name in feature_names:
+            if name not in frame.columns:
+                frame[name] = 0
+        frame = frame[feature_names]
+    prediction_input = frame.to_numpy() if model_name == 'rf' else frame
+    prediction = int(model.predict(prediction_input)[0])
+    probabilities = model.predict_proba(prediction_input)[0]
+    return {
+        "strength": prediction,
+        "confidence": float(probabilities[prediction]),
+        "features": features,
+    }
+
+
+def _parse_password_tokens(password: str) -> dict:
+    """Separate a password into non-sensitive structural components."""
+    return {
+        "words": re.findall(r'[A-Za-z]+', password),
+        "numbers": re.findall(r'\d+', password),
+        "symbols": re.findall(r'[^A-Za-z0-9]', password),
+        "original": password,
+    }
+
+
+_ALPHABET = string.ascii_letters + string.digits
+_SYMBOLS = '!#$%&*+-=?@^_'
+
+
+def _random_token(length: int = 5) -> str:
+    return ''.join(secrets.choice(_ALPHABET) for _ in range(length))
+
+
+def _leet(value: str) -> str:
+    substitutions = {'a': '@', 'e': '3', 'i': '1', 'o': '0', 's': '$', 't': '7'}
+    return ''.join(substitutions.get(char.lower(), char) for char in value)
+
+
+def _mutate_password(tokens: dict, strategy: int) -> str:
+    """Create a style-preserving candidate with CSPRNG-generated additions."""
+    words = ''.join(tokens['words']) or 'Secure'
+    numbers = ''.join(tokens['numbers']) or str(secrets.randbelow(9000) + 1000)
+    symbols = ''.join(tokens['symbols']) or secrets.choice(_SYMBOLS)
+    title_word = words[:1].upper() + words[1:]
+    tail = secrets.choice(_SYMBOLS) + _random_token(secrets.choice(range(4, 7)))
+    if strategy == 0:
+        return f'{title_word}{symbols}{numbers}{tail}'
+    if strategy == 1:
+        return f'{_leet(words)}{secrets.choice(_SYMBOLS)}{numbers}{tail}'
+    if strategy == 2:
+        return f'{secrets.choice(_SYMBOLS)}{_random_token(4)}_{title_word}{symbols}{numbers}'
+    if strategy == 3:
+        shuffled_word = ''.join(
+            char.upper() if secrets.randbelow(2) else char.lower() for char in words
+        )
+        return f'{numbers}{secrets.choice(_SYMBOLS)}{shuffled_word}{symbols}{tail}'
+    year = str(2000 + secrets.randbelow(27))
+    return f'{title_word[:1]}{secrets.choice(_SYMBOLS)}{title_word[1:]}{year}_{_random_token(6)}'
+
+
+def _validate_candidate(candidate: str):
+    """Return only candidates the installed model calls Strong at >= 85%."""
+    result = _model_result(candidate)
+    if result and result['strength'] == 2 and result['confidence'] >= 0.85:
+        return {"password": candidate, "label": "strong", "confidence": result['confidence']}
+    return None
+
 @app.route('/api/predict', methods=['POST'])
 def predict():
     password, error = parse_password_payload()
     if error:
         return error
-    features = extract_all_features(password, dictionary)
-    
     if model is None:
         return jsonify({"error": "Model not loaded"}), 500
-        
-    # Ensure correct feature order
-    X = pd.DataFrame([features])
-    if feature_names:
-        for fn in feature_names:
-            if fn not in X.columns:
-                X[fn] = 0
-        X = X[feature_names]
-        
-    prediction_input = X.to_numpy() if model_name == 'rf' else X
-    pred = int(model.predict(prediction_input)[0])
-    probs = model.predict_proba(prediction_input)[0]
-    confidence = float(probs[pred])
-    
+    result = _model_result(password)
     labels = ["weak", "medium", "strong"]
-    
     return jsonify({
-        "strength": pred,
-        "label": labels[pred],
-        "confidence": confidence,
+        "strength": result['strength'],
+        "label": labels[result['strength']],
+        "confidence": result['confidence'],
         "model": "Random Forest" if model_name == 'rf' else "XGBoost",
-        "features": features
+        "features": result['features']
+    })
+
+
+@app.route('/api/recommend', methods=['POST'])
+def recommend():
+    """Return up to three style-preserving, model-validated suggestions."""
+    password, error = parse_password_payload()
+    if error:
+        return error
+    if model is None:
+        return jsonify({"error": "Model not loaded"}), 503
+
+    input_result = _model_result(password)
+    tokens = _parse_password_tokens(password)
+    recommendations = []
+    seen = {password}
+    for strategy in range(5):
+        for _ in range(10):
+            candidate = _mutate_password(tokens, strategy)
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            validated = _validate_candidate(candidate)
+            if validated:
+                recommendations.append(validated)
+                break
+        if len(recommendations) == 3:
+            break
+
+    labels = ["weak", "medium", "strong"]
+    return jsonify({
+        "input_strength": {
+            "label": labels[input_result['strength']],
+            "confidence": input_result['confidence'],
+        },
+        "recommendations": recommendations,
+        "strategy": "Kept your base word and numbers; added length and unpredictable characters.",
     })
 
 @app.route('/api/check-breach', methods=['POST'])
@@ -217,21 +314,20 @@ def analyze():
     z_pred = 0 if z_score <= 1 else (1 if z_score <= 3 else 2)
     
     # 4. ML Model
-    ml_res = {}
-    if model is not None:
-        features = extract_all_features(password, dictionary)
-        X = pd.DataFrame([features])
-        if feature_names:
-            for fn in feature_names:
-                if fn not in X.columns:
-                    X[fn] = 0
-            X = X[feature_names]
-        prediction_input = X.to_numpy() if model_name == 'rf' else X
-        pred = int(model.predict(prediction_input)[0])
-        probabilities = model.predict_proba(prediction_input)[0]
-        ml_res = {"strength": pred, "confidence": float(probabilities[pred]), "features": features}
+    ml_res = _model_result(password)
         
     labels = ["weak", "medium", "strong"]
+    ml_pred = ml_res.get('strength') if ml_res else None
+    if breach_res.get('breached'):
+        consensus = 0
+    elif ml_pred is None:
+        consensus = z_pred
+    elif ml_pred == 0:
+        consensus = 0
+    elif ml_pred == 2 and z_pred == 2:
+        consensus = 2
+    else:
+        consensus = 1
     
     return jsonify({
         "breach_check": breach_res,
@@ -242,7 +338,12 @@ def analyze():
             "label": labels[ml_res.get("strength", 0)] if ml_res else "unknown",
             "confidence": ml_res.get("confidence"),
             "model": "Random Forest" if model_name == 'rf' else "XGBoost" if model_name else None,
-        }
+        },
+        "consensus": {
+            "strength": consensus,
+            "label": labels[consensus],
+            "ml_available": ml_pred is not None,
+        },
     })
 
 if __name__ == '__main__':
