@@ -85,21 +85,34 @@ def render_diagram(name: str, output: Path) -> None:
 
     if name == "system_architecture":
         regular = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 18)
-        bold = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 22)
-        title_font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 34)
-        small = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 15)
-        canvas.paste(PILImage.new("RGB", (width, height), "#fbfcfb"))
-        draw.text((310, 28), "Secure Password Manager - Simplified Architecture", font=title_font, fill="#173b3f")
-        draw.text((400, 73), "Local vault and analysis with privacy-preserving breach lookup", font=small, fill="#526d70")
-        text_box((65, 165, 420, 510), "1. Browser vault", ["Encrypted local credentials", "AES-256-GCM + PBKDF2", "Rule meter + zxcvbn", "Generator and auto-lock", "Password remains on the device"], "#eef6f4", "#2f6f6d")
-        text_box((522, 165, 877, 510), "2. Local analysis", ["Flask at 127.0.0.1:5000", "17 features -> Random Forest", "Consensus and suggestions", "No password logging", "Loopback only; not network exposed"], "#f1faf6", "#1f7a68")
-        text_box((980, 165, 1335, 510), "3. HIBP check", ["SHA-1 calculated locally", "Only first 5 hash characters", "sent to the range API", "Suffixes matched locally", "Full password never reaches HIBP"], "#fff6ed", "#c96d32")
-        arrow((420, 285), (522, 285), "optional analysis")
-        arrow((522, 390), (420, 390), "verdict + advice")
-        arrow((877, 305), (980, 305), "SHA-1 prefix only")
-        draw.rounded_rectangle((270, 610, 1130, 700), radius=14, fill="#e4efec", outline="#b8ccc5", width=2)
-        draw.text((575, 632), "PRIVACY BOUNDARY", font=bold, fill="#173b3f")
-        draw.text((440, 667), "The complete password remains on the user device.", font=regular, fill="#34454a")
+        bold = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 23)
+        title_font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 36)
+        small = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 16)
+        canvas.paste(PILImage.new("RGB", (width, height), "#f8fafc"))
+        draw.text((535, 28), "System Architecture", font=title_font, fill="#0f172a")
+        draw.text((450, 78), "Simple component view of the implemented prototype", font=small, fill="#475569")
+
+        def architecture_card(x, y, width_box, title, lines, fill, outline, number):
+            draw.rounded_rectangle((x, y, x + width_box, y + 125), radius=14, fill=fill, outline=outline, width=3)
+            draw.ellipse((x + 16, y + 16, x + 48, y + 48), fill=outline)
+            draw.text((x + 27, y + 22), str(number), font=small, fill="#ffffff")
+            draw.text((x + 65, y + 22), title, font=bold, fill="#0f172a")
+            line_y = y + 66
+            for line in lines:
+                draw.text((x + width_box / 2, line_y), line, font=regular, fill="#334155", anchor="ma")
+                line_y += 25
+
+        architecture_card(75, 180, 285, "Browser vault", ["AES-GCM encrypted entries", "PBKDF2 key derivation"], "#dbeafe", "#2563eb", 1)
+        architecture_card(455, 180, 260, "Local analysis", ["Flask on 127.0.0.1", "Random Forest model"], "#d1fae5", "#059669", 2)
+        architecture_card(810, 180, 285, "HIBP range lookup", ["SHA-1 prefix only", "No full password sent"], "#ffedd5", "#ea580c", 3)
+        architecture_card(410, 475, 360, "Final security verdict", ["Consensus, breach status, recommendations", "Rendered in the browser when needed"], "#dbeafe", "#2563eb", 4)
+        arrow((360, 242), (455, 242), "optional")
+        arrow((715, 242), (810, 242), "SHA-1 prefix")
+        arrow((585, 305), (585, 475))
+        arrow((950, 305), (690, 475))
+        draw.rounded_rectangle((260, 690, 1140, 750), radius=12, fill="#ffffff", outline="#64748b", width=2)
+        draw.text((535, 708), "Privacy boundary", font=bold, fill="#0f172a")
+        draw.text((430, 730), "Complete password remains on the device.", font=regular, fill="#334155")
     else:
         draw.text((465, 30), "Operational Workflow", font=title_font, fill="#0f172a")
         steps = [
