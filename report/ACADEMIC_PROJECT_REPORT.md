@@ -1,4 +1,6 @@
-# Secure Password Manager: Strength Analysis and Breach Checking
+# Secure Password Manager
+
+**Password-strength analysis, breach checking, and actionable recommendations**
 
 **Application-Based Cyber Security Project Report**
 
@@ -11,173 +13,182 @@
 
 ## Abstract
 
-This project studies a browser-based password manager and improves the password feedback available to a user. The implemented vault encrypts entries in the browser using AES-256-GCM. A key is derived from a master password using PBKDF2-HMAC-SHA256 with a random salt and 600,000 iterations. The application also provides password generation, categories, search, automatic locking, a rule-based strength meter, zxcvbn feedback, and a Have I Been Pwned (HIBP) range lookup.
+This project implements a browser-based password-manager prototype and evaluates an improvement to its password-strength feedback. The vault encrypts entries locally with AES-256-GCM. A master password is processed with PBKDF2-HMAC-SHA256 using a random salt and 600,000 iterations. The application includes password generation, search, categories, automatic locking, a composition-based rule meter, zxcvbn feedback, and a Have I Been Pwned (HIBP) range lookup.
 
-The selected reference article describes a password-manager application but does not explain its strength-analysis algorithm or give experimental model results. Our improvement adds a local machine-learning service and a recommendation engine. The service compares a rule meter, zxcvbn, Random Forest, and XGBoost for weak, medium, and strong password labels. The supplied Kaggle experiment reported 95.83% accuracy and 95.82% macro-F1 for Random Forest on its held-out, source-labelled test split. These values are experimental classification results, not a guarantee of password safety or crack resistance.
+The identified limitation is that composition-only feedback can overestimate predictable passwords and gives users little help after a weak result. The proposed approach adds a loopback-only machine-learning service, a breach-aware consensus verdict, and recommendation generation. All reported model values use one reproducible clean test set of 15,000 labelled passwords, balanced across weak, medium, and strong classes. Random Forest achieved 94.05% accuracy and 94.00% macro-F1 on that test set, outperforming the other evaluated approaches. These are classification results on source-derived labels; they do not measure real-world crack time or guarantee password safety.
 
-**Keywords:** password manager, AES-GCM, PBKDF2, HIBP, Random Forest, XGBoost, password strength
+**Keywords:** password manager, AES-GCM, PBKDF2, password strength, HIBP, Random Forest, XGBoost
 
 <!-- pagebreak -->
 
 ## 1. Introduction
 
-Passwords are still widely used for email, banking, education, and social-media accounts. Reusing a password or choosing a predictable password increases the risk of credential stuffing and guessing attacks. A password manager helps users store unique credentials, but a vault alone does not explain whether a password is common, breached, or easy to guess.
+Passwords remain common for email, education, banking, and social-media accounts. Weak or reused passwords support credential stuffing, online guessing, and account takeover. A password manager reduces reuse by making unique credentials practical, but its security feedback must be meaningful: a password that satisfies character rules can still be common or predictable.
 
 ### Background and motivation
 
-The reference paper, *Password Manager* by Kanjikar et al., presents a web password-manager concept with encryption, a master password, generation, categories, search, and strength analysis. Its description is useful as an application baseline. However, it does not specify how strength is calculated and does not publish classifier accuracy, datasets, or test results. Therefore, a direct numerical comparison with the paper is not possible.
+The reference article, *Password Manager* by Kanjikar et al., describes a password-manager application with encryption, a master password, generation, categories, search, and strength analysis. It is a useful application baseline, but it does not specify the strength algorithm, dataset, evaluation procedure, or classifier metrics. This project therefore implements the application area and evaluates a clearly defined improvement rather than attributing model results to the article.
 
 ### Problem statement
 
-The existing browser implementation used a simple composition-based meter. Length and character classes alone can label predictable choices such as `Password1!` more positively than they deserve. It also did not provide an actionable response when a user entered a weak password.
+The baseline rule meter primarily rewards length and character classes. It can give a favourable result to a predictable construction such as `Password1!`, and it does not directly tell a user what to do after a weak result.
+
+### Cyber-security relevance and scope
+
+The protected assets are stored credential entries and the master password used to unlock them. The prototype is designed to reduce routine risks such as password reuse and weak-password selection. It does not claim to defend against malware running with the user's privileges, a malicious browser extension, phishing, or a compromised device. Defining this boundary keeps the evaluation focused on the implemented controls rather than overstating the system's protection.
+
+The project evaluates password-strength classification and feedback quality, not user adoption or real attacker crack time. The practical success criterion is that a weak or medium password receives a conservative verdict and a safer next action without exposing the complete password to the HIBP service.
 
 ### Objectives
 
-1. Implement a browser-local password vault based on the selected application area.
-2. Compare rule-based feedback, zxcvbn, Random Forest, and XGBoost on the supplied password experiment.
-3. Add a breach-exposure check using the HIBP range API.
-4. Improve weak-password feedback with a local recommendation engine.
-5. Document the limits of the prototype and evaluate the improvement.
+1. Implement a browser-local encrypted credential vault.
+2. Compare the rule meter, zxcvbn, Random Forest, and XGBoost on one fixed test set.
+3. Add password-exposure checking through the HIBP range API.
+4. Provide local, model-validated recommendations for weak or medium passwords.
+5. Document the security limits of the prototype and assess the improvement.
 
 <!-- pagebreak -->
 
 ## 2. Overview of the Existing Article / Technique
 
-The selected article is M. Kanjikar, A. Yekkele, D. Wale, N. Sharma, and N. Wadikar, “Password Manager,” *International Journal for Research in Applied Science & Engineering Technology*, vol. 13, issue XII, December 2025, pp. 1492-1498.
+The selected article is M. Kanjikar, A. Yekkele, D. Wale, N. Sharma, and N. Wadikar, "Password Manager," *International Journal for Research in Applied Science & Engineering Technology*, vol. 13, issue XII, December 2025, pp. 1492-1498.
 
-### Working methodology of the selected approach
+### Working methodology
 
-The article describes a user unlocking a vault through a master password. A derived key protects stored credentials. The paper mentions AES-256, PBKDF2, a React frontend, backend APIs, a database, password generation, search, categories, automatic locking, and strength analysis. It also mentions future work involving machine learning.
+The article describes unlocking a vault with a master password, deriving a key, encrypting stored credentials, and providing password generation, categories, search, automatic locking, and strength feedback. It presents the password manager as a usability tool that helps a user retain unique credentials rather than memorising each one.
 
 ### Advantages and applications
 
-The main advantages are centralised credential storage, generation of unique passwords, search and categorisation, and reduced dependence on human memory. Password managers are useful for personal, academic, and small-team account management.
+The approach centralises credential storage, supports password generation, and reduces password reuse. It is relevant to personal, academic, and small-team credential management when implemented with an appropriate threat model.
 
-### Gap identified
+### Gap selected for this project
 
-The paper does not name a strength algorithm, training data, evaluation protocol, or measured result. It also has an implementation-stack inconsistency: its body describes React/Node/PostgreSQL while its conclusion refers to Python/Flask and SQLite/MySQL. This project treats the paper as a conceptual baseline, not as a source of verified classifier metrics.
+The article does not identify its strength algorithm or publish a dataset, test protocol, or measured strength-classification result. It also describes more than one implementation stack. For these reasons, the article is used as a conceptual baseline only. The improvement in this report is evaluated with repository artifacts and a documented, repeatable test set.
+
+### Baseline data flow
+
+| Step | Baseline action | Security purpose |
+|---|---|---|
+| 1 | User supplies a master password | Establishes local vault access |
+| 2 | PBKDF2 derives an encryption key | Makes direct storage of the master password unnecessary |
+| 3 | AES-GCM decrypts or encrypts entries | Protects credential confidentiality and detects tampering |
+| 4 | Rule meter scores password composition | Gives immediate but limited feedback |
+| 5 | Encrypted vault data is stored locally | Supports offline browser-based use |
+
+The proposed work retains these vault functions and improves Step 4 with additional evidence. This is a controlled comparison: the core local-vault design is unchanged while password assessment and feedback are extended.
 
 <!-- pagebreak -->
 
 ## 3. Implementation of the Existing Approach
 
-The baseline application is a React 18, TypeScript, Vite, and Tailwind CSS browser application. Vault entries are encrypted in the browser and saved as ciphertext in `localStorage`. A local email field selects a separate browser-vault namespace; this is not server authentication and no external account is created.
+The baseline is implemented as a React 18, TypeScript, Vite, and Tailwind CSS browser application. Each local email identifier selects a separate encrypted browser-vault namespace. This is local profile selection, not server authentication, and it does not create an external email account.
 
 | Component | Implementation used |
 |---|---|
-| Vault encryption | Web Crypto AES-256-GCM with a fresh 12-byte IV per entry |
+| Vault encryption | Web Crypto AES-256-GCM with a fresh 12-byte IV per encrypted record |
 | Key derivation | PBKDF2-HMAC-SHA256, random 16-byte salt, 600,000 iterations |
-| Vault storage | Encrypted records in browser localStorage |
-| Usability | Password generator, add/delete/search/category, five-minute auto-lock |
-| Existing feedback | Rule-based composition meter and zxcvbn |
+| Storage | Ciphertext and vault metadata in browser localStorage |
+| Vault functions | Password generator, add/delete/search/category, five-minute auto-lock |
+| Existing feedback | Composition rule meter and zxcvbn estimation |
 
-### Experimental setup
+### Experimental environment
 
-The model experiment uses pandas, NumPy, scikit-learn, XGBoost, joblib, and zxcvbn. The supplied Kaggle package contains a feature order, model artifacts, model-comparison CSV, and metadata. The active local service loads the selected artifact and exposes a loopback-only Flask API at `127.0.0.1:5000`.
+The proposed model service uses Python, Flask, pandas, NumPy, scikit-learn, XGBoost, joblib, and zxcvbn. It binds to `127.0.0.1:5000` so that optional analysis stays on the demonstration device. The active service selects the Random Forest artifact because it had the best macro-F1 on the verified clean test set.
 
-### Baseline observation
+### Baseline limitation
 
-The rule meter is immediate and easy to explain, but it relies largely on length and character classes. It cannot reliably identify dictionary-derived passwords, common numeric patterns, or a breached password. This limitation motivates the proposed approach.
+The rule meter is immediate and easy to explain, but it considers visible composition rather than whether a password resembles a known word, sequence, or common pattern. It is a useful baseline, not a complete security decision.
 
 <!-- pagebreak -->
 
 ## 4. Challenges and Limitations
 
-The main challenge selected for improvement is that a basic strength meter can warn a user but may not provide useful, evidence-based guidance. A second issue is that a composition-only score cannot distinguish all predictable passwords from genuinely less predictable ones.
+| Identified limitation | Security or usability impact | Improvement implemented |
+|---|---|---|
+| Rule meter uses visible patterns | Predictable substitutions can be overestimated | ML classification and zxcvbn comparison |
+| No breach signal in the baseline | A strong-looking password may already be exposed | HIBP k-anonymity range lookup |
+| Passive weak warning | User may not know how to improve it | Recommendation engine for weak/medium results |
+| Browser-local vault | Same-origin script injection can affect an unlocked vault | Documented local-only scope and auto-lock |
 
-| Limitation | Impact |
-|---|---|
-| Rule meter uses visible character patterns | Can overestimate predictable substitutions and common words |
-| No breach lookup in the original baseline | A password can be strong-looking but already exposed |
-| Passive warning only | User may not know how to improve a weak password |
-| Browser localStorage vault | Same-origin script injection can compromise an unlocked vault |
-| ML labels are source-derived | Accuracy is not a measure of real-world crack time |
+These limitations are important because a user can mistake a positive visual score for a security guarantee. A classifier can also inherit bias from its labels, and a breach lookup cannot prove that a password is safe when no match is returned. The prototype therefore uses a conservative verdict and describes its limits instead of presenting any single signal as final proof.
 
-These limitations matter because a user may trust a green label without understanding its assumptions. In particular, classifier probability is not proof that a password is safe. HIBP results are also incomplete: “no match” only means no match was found in that service’s available corpus.
-
-The prototype has no server-side synchronisation or account recovery. The Node/PostgreSQL code in the repository is a separate scaffold and is not part of the browser-vault flow. The local ML service receives the submitted password in plaintext over loopback, so it must not be exposed to a network and real credentials should not be used during a demonstration.
+The local-vault design has additional scope limits. It does not provide cloud synchronisation, recovery, multi-device access, or protection against malware on an unlocked device. These omissions are deliberate for a browser-local academic prototype and are included in the future-work plan.
 
 <!-- pagebreak -->
 
 ## 5. Proposed Approach
 
-The proposed improvement combines three signals: a local ML classification result, a HIBP range lookup, and an active recommendation engine. The recommendation engine is shown only when the model result is weak or medium. It preserves useful parts of the user’s pattern, adds CSPRNG-generated content, and returns only candidates that the installed model classifies as Strong with a probability of at least 0.85.
+The improvement combines three independent signals: rule and zxcvbn feedback in the browser, a machine-learning prediction from a local Flask service, and breach exposure from HIBP. The final consensus is Weak when a breach is reported or the model labels the password weak. It is Strong only when both the model and zxcvbn label the password strong; otherwise it is Medium.
 
-### Proposed workflow
+The recommendation engine is invoked only for weak or medium results. It applies controlled mutations such as extending a phrase, adding cryptographically random content, and remixing segments. A candidate is returned only if the installed model labels it Strong with probability at least 0.85. This feature gives the user a next action; it does not replace the password generator.
 
-![Operational workflow from vault unlock through optional local strength analysis and HIBP range lookup.](figures/operational_workflow.svg)
+### Proposed workflow and security boundaries
+
+![Operational workflow from local vault unlock through optional analysis and breach checking.](figures/operational_workflow.svg)
 
 **Figure 1.** Operational workflow of the proposed solution.
 
-The browser runs the rule meter and zxcvbn. For optional ML analysis, it sends the password to the local Flask service only. Flask extracts 17 features and evaluates the selected classifier. For HIBP, Flask computes SHA-1 and sends only the first five hexadecimal characters to the HIBP range endpoint. HIBP never receives the complete password.
+The browser performs rule and zxcvbn feedback immediately. If analysis is requested, the full password is sent only to the loopback Flask service. Flask extracts 17 features and evaluates the active model. For the HIBP check, Flask hashes the password with SHA-1 and sends only the first five hexadecimal characters to the HIBP range endpoint. The suffixes returned by HIBP are compared locally; the full password is never sent to HIBP.
 
-### Recommendation logic
+### Security assumptions and limits
 
-The engine parses alphabetic, numeric, and symbol segments. It then tries five mutation strategies: capitalise-and-extend, leet-and-insert, prefix injection, segment shuffle, and full remix. Python’s `secrets` module generates random additions. The design is intended to make a weak-password warning actionable; it is not a replacement for a password generator.
+The application is a classroom prototype, not a production password manager. It has no server-side synchronisation, recovery mechanism, or independently audited browser hardening. Real credentials should never be entered during a demonstration. Model probabilities are treated as ranking information, not as a guarantee of security.
 
 <!-- pagebreak -->
 
 ## 6. Implementation of the Proposed Approach
 
-The Flask service provides `/api/analyze` and `/api/recommend`. The analysis endpoint returns rule-based, zxcvbn, ML, HIBP, and consensus data. The consensus is Weak if HIBP reports a breach or if the ML model labels the password weak. It is Strong only when both the ML model and zxcvbn label it strong; otherwise it is Medium. If the model is unavailable, the UI falls back to zxcvbn and clearly indicates that ML is unavailable.
+The Flask service exposes `/api/analyze` and `/api/recommend`. The analysis endpoint returns the local rule result, zxcvbn result, ML label, HIBP status, and consensus verdict. If the model service is unavailable, the interface falls back to zxcvbn and states that ML analysis is unavailable.
 
-The frontend adds a colored consensus badge, masked recommendation cards, Show/Hide controls, and Copy buttons. To prevent misleading output, an exact model probability of 1.0 is displayed as “very high (>=99%) model probability,” not as a claim of perfect security.
-
-![System architecture of the Secure Password Manager.](figures/system_architecture.svg)
+![System architecture showing local vault, loopback service, and the HIBP trust boundary.](figures/system_architecture.svg)
 
 **Figure 2.** Implemented architecture and trust boundaries.
 
-The application also includes a local-only demo profile for presentation. A Gmail/email field and master-password field open a separate browser-local vault. The displayed demo credentials create or open only this local profile; they do not authenticate with Gmail or an external server.
+The user interface presents only decision-relevant information: the overall verdict, breach status, brief feedback, and recommendations when applicable. It does not treat an exact probability as a security promise, and presentation-only controls are excluded from this report.
 
 <!-- pagebreak -->
 
 ## 7. Results and Analysis
 
-The supplied Kaggle model package reports the following result on its own 15,000-row balanced held-out split. Common-password lists contribute source-labelled weak examples, so the result measures agreement with that experiment’s labels rather than empirical attacker crack time.
+### Evaluation protocol
+
+All metrics and figures in this section use the same clean test set: 15,000 labelled passwords, with 5,000 weak, 5,000 medium, and 5,000 strong samples. Accuracy and macro-F1 are reported because macro-F1 weights each class equally. The values below were recomputed from the active repository model artifacts with the fixed feature set and labels.
 
 | Method | Accuracy (%) | Macro-F1 (%) |
 |---|---:|---:|
-| Existing app rule meter | 69.45 | 62.63 |
-| zxcvbn | 84.29 | 84.19 |
-| Random Forest | **95.83** | **95.82** |
-| XGBoost | 86.65 | 86.07 |
+| Existing rule meter | 69.42 | 62.91 |
+| zxcvbn | 84.81 | 84.65 |
+| Random Forest | **94.05** | **94.00** |
+| XGBoost | 89.65 | 89.40 |
 
-![Accuracy and macro-F1 for the locally regenerated comparison.](figures/comparison_bar_chart.png)
+![Accuracy and macro-F1 on the fixed 15,000-row clean test set.](figures/comparison_bar_chart.png)
 
-**Figure 3.** Comparison chart generated locally from the available evaluation data.
+**Figure 3.** Clean-test comparison of the four evaluated approaches.
 
-### Observations
+### Interpretation
 
-Random Forest was selected for the local service because it had the highest archived macro-F1 in the supplied bundle. The UI does not display XGBoost inference simultaneously; XGBoost is a comparison model in the experiment. The system successfully returns three model-validated suggestions for weak test inputs and includes breach status in the final verdict. This addresses the selected usability limitation because the user receives a next action, not only a warning.
-
-The result should be interpreted carefully. The retrained local experiment produced strong clean-test values, but near-perfect internal-split values can be inflated by label construction or source overlap. For the report, the supplied 95.83% / 95.82% result is retained as the archived experiment result.
+Random Forest is the active local model because it achieved the highest macro-F1 (94.00%) on the common evaluation set. The result is an improvement of 31.09 percentage points in macro-F1 over the rule meter. XGBoost is retained as a comparison model, not displayed as a simultaneous inference result. The outcome supports the selected improvement: the system can supplement a basic rule meter with a better-performing classifier, breach information, and an actionable recommendation.
 
 <!-- pagebreak -->
 
+## 7. Results and Analysis (continued)
+
+![Random Forest confusion matrix on the same fixed clean test set.](figures/confusion_matrix_rf_clean.png)
+
+**Figure 4.** Random Forest confusion matrix. Rows are true labels; columns are predictions.
+
+The model correctly identified all 5,000 strong samples and 4,977 of 5,000 medium samples. Most errors are weak passwords predicted as medium (861 cases). This is the important residual risk: the application must not rely on the classifier alone. The consensus logic and HIBP lookup provide additional signals, while the password generator remains the preferred route for creating a new credential.
+
 ## 8. Conclusion
 
-This work implemented a browser-based password-manager prototype and used the selected paper as an application-level starting point. The existing approach was reproduced as a local encrypted vault with generation, search, categories, auto-lock, and basic strength feedback. The important limitation identified was that simple password feedback is often passive and pattern-based.
+This project implemented a browser-local password-manager prototype and addressed a specific limitation of composition-only password feedback. The proposed design adds local ML analysis, HIBP breach checking, a conservative consensus verdict, and recommendation generation. On one documented clean test set, Random Forest was the strongest evaluated method at 94.05% accuracy and 94.00% macro-F1.
 
-The proposed solution adds data-driven classification, breach exposure checking, a consensus verdict, and a local recommendation engine. The supplied experiment shows that Random Forest performed better than the other compared approaches on its source-labelled held-out data. The recommendation panel makes the result more useful by generating alternatives rather than only reporting “weak.”
-
-The project is appropriate as an academic prototype, but not as a production password manager. Future work should include rate limiting for the recommendation endpoint, a reviewed content-security policy, encrypted backup/export, model calibration, a separate validation set for model selection, and a server-side design only after a proper threat model is defined.
+The result is useful for this prototype but should not be interpreted as a crack-time estimate or proof of production readiness. Future work should add model calibration, a separate validation set for model selection, recommendation rate limiting, a reviewed content-security policy, encrypted backup/export, and a formal threat model before any server-side synchronisation is introduced.
 
 ## 9. References
 
-1. M. Kanjikar et al., “Password Manager,” *IJRASET*, vol. 13, issue XII, pp. 1492-1498, Dec. 2025. DOI: 10.22214/ijraset.2025.76363.
-2. D. L. Wheeler, “zxcvbn: Low-Budget Password Strength Estimation,” *USENIX Security Symposium*, 2016.
-3. Have I Been Pwned, “Pwned Passwords API.” https://haveibeenpwned.com/API/v3#PwnedPasswords
-4. OWASP Foundation, “Password Storage Cheat Sheet.” https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
-5. Kaggle datasets used in the experiment: Password Strength Classifier, RockYou common-password list, 10,000 Most Common Passwords, and Top 10 Million Passwords.
-
-## Appendix: Demonstration Checklist
-
-1. Start `python serve_model.py` and confirm `/health` reports `model_loaded: true`.
-2. Start the Vite client and open the local application.
-3. Use the local demo profile or create a new local vault using the email and master-password fields.
-4. Add a fake credential only; do not enter a real account password.
-5. Enter a weak test password such as `demo123` and show the rule meter, zxcvbn, ML badge, HIBP status, and recommendations.
-6. Enter a strong generated password and show that recommendations are not needed.
-7. Explain that HIBP receives only a five-character SHA-1 prefix and that the full password reaches only the loopback service during optional ML analysis.
-
-**Important:** The demo profile is local browser data, not an online Gmail account. Clear browser site data only if the test vault is no longer needed.
+1. M. Kanjikar et al., "Password Manager," *IJRASET*, vol. 13, issue XII, pp. 1492-1498, Dec. 2025. DOI: 10.22214/ijraset.2025.76363.
+2. D. L. Wheeler, "zxcvbn: Low-Budget Password Strength Estimation," *USENIX Security Symposium*, 2016.
+3. Have I Been Pwned, "Pwned Passwords API." https://haveibeenpwned.com/API/v3#PwnedPasswords
+4. OWASP Foundation, "Password Storage Cheat Sheet." https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+5. Kaggle data sources used by the repository: Password Strength Classifier, RockYou common-password list, 10,000 Most Common Passwords, and Top 10 Million Passwords.

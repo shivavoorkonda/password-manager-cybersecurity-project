@@ -40,6 +40,9 @@ def image_flowable(relative_path: str) -> Image:
         source = rendered
     image = Image(str(source))
     max_width, max_height = 6.85 * inch, 5.5 * inch
+    # Evaluation evidence should be readable without dominating the results pages.
+    if source.name == "confusion_matrix_rf_clean.png":
+        max_width, max_height = 4.6 * inch, 2.8 * inch
     scale = min(max_width / image.imageWidth, max_height / image.imageHeight, 1)
     image.drawWidth = image.imageWidth * scale
     image.drawHeight = image.imageHeight * scale
@@ -111,10 +114,10 @@ def render_diagram(name: str, output: Path) -> None:
 
 def footer(canvas, doc):
     canvas.saveState()
-    canvas.setStrokeColor(colors.HexColor("#cbd5e1"))
+    canvas.setStrokeColor(colors.HexColor("#b8ccc5"))
     canvas.line(doc.leftMargin, 0.53 * inch, A4[0] - doc.rightMargin, 0.53 * inch)
     canvas.setFont("Helvetica", 8)
-    canvas.setFillColor(colors.HexColor("#475569"))
+    canvas.setFillColor(colors.HexColor("#49635f"))
     canvas.drawString(doc.leftMargin, 0.34 * inch, "Secure Password Manager - Academic Project Report")
     canvas.drawRightString(A4[0] - doc.rightMargin, 0.34 * inch, f"Page {doc.page}")
     canvas.restoreState()
@@ -122,11 +125,11 @@ def footer(canvas, doc):
 
 def build() -> None:
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="TitleCustom", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=21, leading=26, textColor=colors.HexColor("#0f172a"), alignment=TA_CENTER, spaceAfter=18))
-    styles.add(ParagraphStyle(name="H1Custom", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=15, leading=19, textColor=colors.HexColor("#0f172a"), spaceBefore=16, spaceAfter=8, keepWithNext=True))
-    styles.add(ParagraphStyle(name="H2Custom", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=colors.HexColor("#1e3a5f"), spaceBefore=12, spaceAfter=6, keepWithNext=True))
-    styles.add(ParagraphStyle(name="BodyCustom", parent=styles["BodyText"], fontName="Helvetica", fontSize=9.4, leading=13.3, textColor=colors.HexColor("#1f2937"), spaceAfter=6, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="Caption", parent=styles["BodyText"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, textColor=colors.HexColor("#475569"), alignment=TA_CENTER, spaceAfter=10))
+    styles.add(ParagraphStyle(name="TitleCustom", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=21, leading=26, textColor=colors.HexColor("#173b3f"), alignment=TA_CENTER, spaceAfter=18))
+    styles.add(ParagraphStyle(name="H1Custom", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=15, leading=19, textColor=colors.HexColor("#173b3f"), spaceBefore=16, spaceAfter=8, keepWithNext=True))
+    styles.add(ParagraphStyle(name="H2Custom", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=colors.HexColor("#2f6f6d"), spaceBefore=12, spaceAfter=6, keepWithNext=True))
+    styles.add(ParagraphStyle(name="BodyCustom", parent=styles["BodyText"], fontName="Helvetica", fontSize=9.4, leading=13.3, textColor=colors.HexColor("#263238"), spaceAfter=6, alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name="Caption", parent=styles["BodyText"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, textColor=colors.HexColor("#5b5c4f"), alignment=TA_CENTER, spaceAfter=10))
     styles.add(ParagraphStyle(name="ListCustom", parent=styles["BodyText"], fontName="Helvetica", fontSize=9.4, leading=13, leftIndent=15, firstLineIndent=-10, spaceAfter=3))
 
     story = []
@@ -163,13 +166,13 @@ def build() -> None:
             widths = [6.8 * inch / len(header)] * len(header)
             table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT")
             table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a5f")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2f6f6d")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#b8ccc5")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
                 ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f2f7f4")]),
             ]))
             story.extend([table, Spacer(1, 8)])
             continue
