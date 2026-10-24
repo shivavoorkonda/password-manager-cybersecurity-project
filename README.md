@@ -12,6 +12,12 @@ Browser-local password-manager prototype with encrypted vault storage, password-
 - Optional loopback-only Flask service for Random Forest analysis and recommendations.
 - HIBP Pwned Passwords range lookup: only a five-character SHA-1 prefix is sent to HIBP.
 
+## System architecture
+
+The browser uses the local Flask service for optional analysis. Flask sends only a five-character SHA-1 prefix to HIBP and compares returned suffixes locally. The Node.js/PostgreSQL scaffold remains separate from the browser-vault flow.
+
+![Secure Password Manager architecture showing the browser vault and interface, loopback Flask analysis, HIBP range lookup, and the separate Node/PostgreSQL scaffold](report/figures/system_architecture.svg)
+
 ## Results
 
 All values below use the same clean, balanced test set of 15,000 labelled passwords (5,000 per class). They measure agreement with source-derived labels and are not estimates of real-world crack time.

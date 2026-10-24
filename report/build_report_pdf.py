@@ -85,34 +85,49 @@ def render_diagram(name: str, output: Path) -> None:
 
     if name == "system_architecture":
         regular = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 18)
-        bold = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 23)
-        title_font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 36)
+        bold = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 21)
+        title_font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 34)
         small = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 16)
-        canvas.paste(PILImage.new("RGB", (width, height), "#f8fafc"))
-        draw.text((535, 28), "System Architecture", font=title_font, fill="#0f172a")
-        draw.text((450, 78), "Simple component view of the implemented prototype", font=small, fill="#475569")
+        canvas = PILImage.new("RGB", (width, height), "#f8fafc")
+        draw = ImageDraw.Draw(canvas)
+        draw.text((width / 2, 34), "Secure Password Manager - System Architecture", font=title_font, fill="#0f172a", anchor="ma")
+        draw.rounded_rectangle((65, 95, 1335, 395), radius=20, fill="#f4f8ff", outline="#2563eb", width=3)
+        draw.text((100, 112), "Browser - React + TypeScript", font=bold, fill="#102238")
 
-        def architecture_card(x, y, width_box, title, lines, fill, outline, number):
-            draw.rounded_rectangle((x, y, x + width_box, y + 125), radius=14, fill=fill, outline=outline, width=3)
-            draw.ellipse((x + 16, y + 16, x + 48, y + 48), fill=outline)
-            draw.text((x + 27, y + 22), str(number), font=small, fill="#ffffff")
-            draw.text((x + 65, y + 22), title, font=bold, fill="#0f172a")
-            line_y = y + 66
+        def card(box, title, lines, fill, outline):
+            x1, y1, x2, y2 = box
+            draw.rounded_rectangle(box, radius=12, fill=fill, outline=outline, width=3)
+            draw.text((x1 + 22, y1 + 20), title, font=bold, fill="#102238")
+            y = y1 + 58
             for line in lines:
-                draw.text((x + width_box / 2, line_y), line, font=regular, fill="#334155", anchor="ma")
-                line_y += 25
+                draw.text((x1 + 22, y), line, font=regular, fill="#334155")
+                y += 34
 
-        architecture_card(75, 180, 285, "Browser vault", ["AES-GCM encrypted entries", "PBKDF2 key derivation"], "#dbeafe", "#2563eb", 1)
-        architecture_card(455, 180, 260, "Local analysis", ["Flask on 127.0.0.1", "Random Forest model"], "#d1fae5", "#059669", 2)
-        architecture_card(810, 180, 285, "HIBP range lookup", ["SHA-1 prefix only", "No full password sent"], "#ffedd5", "#ea580c", 3)
-        architecture_card(410, 475, 360, "Final security verdict", ["Consensus, breach status, recommendations", "Rendered in the browser when needed"], "#dbeafe", "#2563eb", 4)
-        arrow((360, 242), (455, 242), "optional")
-        arrow((715, 242), (810, 242), "SHA-1 prefix")
-        arrow((585, 305), (585, 475))
-        arrow((950, 305), (690, 475))
-        draw.rounded_rectangle((260, 690, 1140, 750), radius=12, fill="#ffffff", outline="#64748b", width=2)
-        draw.text((535, 708), "Privacy boundary", font=bold, fill="#0f172a")
-        draw.text((430, 730), "Complete password remains on the device.", font=regular, fill="#334155")
+        def arrow_left(start, end, label=None):
+            draw.line([start, end], fill="#475569", width=4)
+            draw.polygon([end, (end[0] + 17, end[1] - 10), (end[0] + 17, end[1] + 10)], fill="#475569")
+            if label:
+                draw.text(((start[0] + end[0]) / 2, (start[1] + end[1]) / 2 - 24), label, font=small, fill="#475569", anchor="mm")
+
+        # Browser components and internal flow.
+        draw.line((450, 260, 520, 260), fill="#475569", width=4)
+        draw.polygon([(520, 260), (503, 250), (503, 270)], fill="#475569")
+        draw.line((870, 260, 940, 260), fill="#475569", width=4)
+        draw.polygon([(940, 260), (923, 250), (923, 270)], fill="#475569")
+        card((100, 150, 450, 350), "Encrypted local vault", ["PBKDF2-HMAC-SHA256 (600,000)", "AES-256-GCM; fresh IV per entry", "Encrypted records in localStorage"], "#ffffff", "#60a5fa")
+        card((520, 150, 870, 350), "Password interface", ["Generator, search and categories", "Rule meter + zxcvbn in browser", "Optional loopback analysis request"], "#ffffff", "#60a5fa")
+        card((940, 150, 1300, 350), "Security feedback", ["ML verdict and confidence", "Breach status and consensus", "Recommendations when needed"], "#ffffff", "#60a5fa")
+
+        # Optional password-analysis request/response and HIBP range exchange.
+        arrow((700, 350), (500, 450), "password over loopback")
+        arrow((620, 450), (790, 350), "analysis result")
+        arrow((670, 545), (780, 545), "prefix only")
+        arrow_left((780, 600), (670, 600), "suffixes")
+        card((170, 450, 670, 665), "Local Flask service - 127.0.0.1:5000", ["Receives password over loopback only", "Extracts 17 features -> selected RF model", "Computes SHA-1 and calls HIBP", "Returns verdict and recommendations"], "#ecfdf5", "#059669")
+        card((780, 450, 1200, 665), "HIBP range API", ["Only first 5 hash characters leave device", "Returns matching hash suffixes", "Flask compares suffixes locally", "HIBP never receives the full password"], "#fff7ed", "#ea580c")
+
+        draw.rounded_rectangle((250, 725, 1150, 780), radius=10, fill="#f8fafc", outline="#64748b", width=3)
+        draw.text((700, 752), "Separate Node.js / PostgreSQL scaffold - not connected to the browser-vault flow", font=small, fill="#334155", anchor="mm")
     else:
         draw.text((465, 30), "Operational Workflow", font=title_font, fill="#0f172a")
         steps = [
