@@ -128,15 +128,27 @@ The repository’s local Flask service loads the packaged model and the matching
 
 ### 5.3 Breach-check workflow
 
-The browser computes the password’s SHA-1 hash locally, sends only its first five hexadecimal characters to the HIBP range endpoint, and compares the returned suffixes in the browser. HIBP never receives the full password from this check. This is a k-anonymity range lookup, not a guarantee that an unmatched password has never been exposed.
+When the optional analysis panel is used, the browser sends the password to the local loopback Flask service. That service computes the SHA-1 hash, sends only its first five hexadecimal characters to the HIBP range endpoint, and compares the returned suffixes. HIBP never receives the full password from this check. This is a k-anonymity range lookup, not a guarantee that an unmatched password has never been exposed.
 
 ### 5.4 Architecture
 
 Figure 1 shows the implemented browser-vault flow and the two external checks. The Node/PostgreSQL scaffold is included separately to make clear that the current vault does not connect to it.
 
-![System architecture of the Secure Password Manager, showing browser-local encryption, local password-strength analysis, the HIBP range lookup, and the disconnected Node/PostgreSQL scaffold.](figures/system_architecture.png)
+![System architecture of the Secure Password Manager, showing browser-local encryption, local password-strength analysis, the HIBP range lookup, and the disconnected Node/PostgreSQL scaffold.](figures/system_architecture.svg)
 
 **Figure 1.** System architecture of the implemented prototype.
+
+The editable draw.io source is provided in `report/diagrams/system_architecture.drawio`.
+
+### 5.5 Operational workflow
+
+Figure 2 shows the actual processing path. Passwords remain in the browser for vault encryption and are sent to Flask only over the loopback interface when the optional analysis panel is used. Flask derives features for the selected model and sends only a five-character SHA-1 prefix to HIBP; the complete password is never sent to HIBP.
+
+![Operational workflow from vault unlock through optional local strength analysis and HIBP range lookup.](figures/operational_workflow.svg)
+
+**Figure 2.** Operational workflow of the implemented prototype.
+
+The editable draw.io source is provided in `report/diagrams/operational_workflow.drawio`.
 
 ## 6. Implementation of the Proposed Approach
 
@@ -182,21 +194,23 @@ When the ML model classifies a password as weak or medium, the local service gen
 
 ![Accuracy and macro-F1 for the four password-strength estimators on the supplied Kaggle evaluation split.](figures/comparison_bar_chart.png)
 
+**Figure 3.** Accuracy and macro-F1 comparison on the locally reconstructed clean test set.
+
 ![Confusion matrix for Random Forest on the evaluation split.](figures/confusion_matrix_rf.png)
 
-**Figure 3.** Random Forest confusion matrix on the locally reconstructed standard evaluation split.
+**Figure 4.** Random Forest confusion matrix on the locally reconstructed standard evaluation split.
 
 ![Confusion matrix for XGBoost on the evaluation split.](figures/confusion_matrix_xgb.png)
 
-**Figure 4.** XGBoost confusion matrix.
+**Figure 5.** XGBoost confusion matrix on the locally reconstructed standard evaluation split.
 
 ![Top 15 feature importances for Random Forest and XGBoost.](figures/feature_importance.png)
 
-**Figure 5.** Feature importance comparison.
+**Figure 6.** Feature importance comparison.
 
 ![ROC-AUC curves (one-vs-rest) for Random Forest and XGBoost.](figures/roc_curve.png)
 
-**Figure 6.** ROC-AUC curves for both classifiers.
+**Figure 7.** ROC-AUC curves for both classifiers on the locally reconstructed standard evaluation split.
 
 The figure-generation script reconstructs a local split from the full available dataset. Its plots are useful for the demonstration but do not exactly reproduce the archived Kaggle `model_comparison.csv` summary below; the table remains explicitly attributed to that supplied artifact.
 
