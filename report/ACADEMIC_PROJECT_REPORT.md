@@ -139,6 +139,17 @@ These limitations are important because a user can mistake a positive visual sco
 
 The local-vault design has additional scope limits. It does not provide cloud synchronisation, recovery, multi-device access, or protection against malware on an unlocked device. These omissions are deliberate for a browser-local academic prototype and are included in the future-work plan.
 
+### Key security implications
+
+| Design point | Practical implication | User-facing response |
+|---|---|---|
+| Master password is forgotten | A local encrypted vault cannot be recovered without the correct master password | Use a memorable, generated passphrase and retain it safely |
+| Password appears in a breach | Reusing it can enable credential-stuffing attacks | Replace it with a newly generated, unique password |
+| Weak password is classified as Medium | The score may still be too optimistic for a valuable account | Use the recommendation or generator instead of accepting the current password |
+| Local service is unavailable | ML and HIBP-based context may be incomplete | Show the fallback state; do not interpret it as a clean result |
+
+These points explain why the user interface reports a verdict together with its status rather than presenting a single score as a final decision. The password generator remains the safest option when a user is creating a new credential.
+
 <!-- pagebreak -->
 
 ## 5. Proposed Approach
