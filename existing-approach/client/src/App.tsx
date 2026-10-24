@@ -27,6 +27,11 @@ interface EncryptedVault {
 }
 
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const LEGACY_VAULT_KEY = 'zk_vault';
+
+function vaultStorageKey(username: string): string {
+  return `zk_vault:${username.trim().toLowerCase()}`;
+}
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,6 +41,7 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeVaultKey, setActiveVaultKey] = useState<string | null>(null);
 
   // Auto-lock timer
   const lockVault = useCallback(() => {
@@ -43,6 +49,7 @@ export default function App() {
     setCryptoKey(null);
     setVault([]);
     setShowAddForm(false);
+    setActiveVaultKey(null);
   }, []);
 
   useEffect(() => {
@@ -73,12 +80,15 @@ export default function App() {
   }, [isLoggedIn, lockVault]);
 
   // Handle Login
-  const handleLogin = async (masterPassword: string) => {
+  const handleLogin = async (username: string, masterPassword: string) => {
     try {
       setError(null);
+      const profileKey = vaultStorageKey(username);
       
-      // Load encrypted vault from local storage
-      const storedVaultRaw = localStorage.getItem('zk_vault');
+      // Each local username has its own encrypted vault namespace. A legacy
+      // single-vault installation is read once and migrated after a successful unlock.
+      const legacyVaultRaw = localStorage.getItem(LEGACY_VAULT_KEY);
+      const storedVaultRaw = localStorage.getItem(profileKey) ?? legacyVaultRaw;
       
       let key: CryptoKey;
       let decryptedVault: VaultEntry[] = [];
@@ -119,7 +129,9 @@ export default function App() {
             ...storedVault,
             verification: await encrypt('secure-password-manager-vault-v1', key),
           };
-          localStorage.setItem('zk_vault', JSON.stringify(upgradedVault));
+          localStorage.setItem(profileKey, JSON.stringify(upgradedVault));
+        } else if (!localStorage.getItem(profileKey)) {
+          localStorage.setItem(profileKey, storedVaultRaw);
         }
       } else {
         // Initialize new vault
@@ -132,11 +144,12 @@ export default function App() {
           verification: await encrypt('secure-password-manager-vault-v1', key),
           entries: []
         };
-        localStorage.setItem('zk_vault', JSON.stringify(emptyVault));
+        localStorage.setItem(profileKey, JSON.stringify(emptyVault));
       }
 
       setCryptoKey(key);
       setVault(decryptedVault);
+      setActiveVaultKey(profileKey);
       setIsLoggedIn(true);
     } catch (err: any) {
       setError(err.message || "Failed to login");
@@ -144,9 +157,9 @@ export default function App() {
   };
 
   // Save changes to encrypted local storage
-  const saveVault = async (newVault: VaultEntry[], key: CryptoKey) => {
+  const saveVault = async (newVault: VaultEntry[], key: CryptoKey, storageKey: string) => {
     try {
-      const storedVaultRaw = localStorage.getItem('zk_vault');
+      const storedVaultRaw = localStorage.getItem(storageKey);
       if (!storedVaultRaw) throw new Error("Vault structure not found");
       
       const storedVault = JSON.parse(storedVaultRaw) as EncryptedVault;
@@ -165,7 +178,7 @@ export default function App() {
         entries: encryptedEntries
       };
       
-      localStorage.setItem('zk_vault', JSON.stringify(newStoredVault));
+      localStorage.setItem(storageKey, JSON.stringify(newStoredVault));
       setVault(newVault);
     } catch (err) {
       console.error("Failed to save vault", err);
@@ -174,7 +187,7 @@ export default function App() {
   };
 
   const handleAddEntry = async (entryData: Omit<VaultEntry, 'id'>) => {
-    if (!cryptoKey) return;
+    if (!cryptoKey || !activeVaultKey) return;
     
     const newEntry: VaultEntry = {
       ...entryData,
@@ -182,16 +195,16 @@ export default function App() {
     };
     
     const newVault = [...vault, newEntry];
-    await saveVault(newVault, cryptoKey);
+    await saveVault(newVault, cryptoKey, activeVaultKey);
     setShowAddForm(false);
   };
 
   const handleDeleteEntry = async (id: string) => {
-    if (!cryptoKey) return;
+    if (!cryptoKey || !activeVaultKey) return;
     
     if (confirm("Are you sure you want to delete this password?")) {
       const newVault = vault.filter(e => e.id !== id);
-      await saveVault(newVault, cryptoKey);
+      await saveVault(newVault, cryptoKey, activeVaultKey);
     }
   };
 
