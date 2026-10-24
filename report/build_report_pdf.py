@@ -137,6 +137,10 @@ def build() -> None:
         if not line:
             index += 1
             continue
+        if line == "<!-- pagebreak -->":
+            story.append(PageBreak())
+            index += 1
+            continue
         image_match = re.match(r"!\[([^]]*)\]\(([^)]+)\)", line)
         if image_match:
             story.append(KeepTogether([image_flowable(image_match.group(2)), Spacer(1, 7)]))

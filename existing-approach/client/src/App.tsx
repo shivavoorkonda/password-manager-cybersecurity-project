@@ -28,9 +28,10 @@ interface EncryptedVault {
 
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const LEGACY_VAULT_KEY = 'zk_vault';
+const DEMO_USERNAME = 'demo@vault.local';
 
-function vaultStorageKey(username: string): string {
-  return `zk_vault:${username.trim().toLowerCase()}`;
+function vaultStorageKey(email: string): string {
+  return `zk_vault:${email.trim().toLowerCase()}`;
 }
 
 export default function App() {
@@ -80,15 +81,22 @@ export default function App() {
   }, [isLoggedIn, lockVault]);
 
   // Handle Login
-  const handleLogin = async (username: string, masterPassword: string) => {
+  const handleLogin = async (email: string, masterPassword: string, createAccount = false) => {
     try {
       setError(null);
-      const profileKey = vaultStorageKey(username);
+      const profileKey = vaultStorageKey(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingProfileVault = localStorage.getItem(profileKey);
+      if (createAccount && existingProfileVault) {
+        throw new Error('A local vault already exists for this email. Use Log in instead.');
+      }
       
       // Each local username has its own encrypted vault namespace. A legacy
       // single-vault installation is read once and migrated after a successful unlock.
+      // The public demo must never attempt to decrypt a user's legacy vault.
       const legacyVaultRaw = localStorage.getItem(LEGACY_VAULT_KEY);
-      const storedVaultRaw = localStorage.getItem(profileKey) ?? legacyVaultRaw;
+      const storedVaultRaw = createAccount ? null : (existingProfileVault ??
+        (normalizedEmail === DEMO_USERNAME ? null : legacyVaultRaw));
       
       let key: CryptoKey;
       let decryptedVault: VaultEntry[] = [];
