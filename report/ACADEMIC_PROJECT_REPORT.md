@@ -19,6 +19,17 @@ The identified limitation is that composition-only feedback can overestimate pre
 
 **Keywords:** password manager, AES-GCM, PBKDF2, password strength, HIBP, Random Forest, XGBoost
 
+### Project at a glance
+
+| Area | Main contribution |
+|---|---|
+| Existing approach | Browser-local encrypted vault with generation, search, categories, and auto-lock |
+| Identified challenge | Composition-only feedback can overestimate predictable passwords |
+| Proposed improvement | Local ML analysis, HIBP breach checking, consensus, and recommendations |
+| Evaluation basis | One clean, balanced 15,000-password test set used for every reported model metric |
+
+The project deliberately separates vault protection from password assessment. Encryption protects stored entries, while strength analysis helps a user choose a safer password before storing it. Both controls are needed: a well-encrypted vault cannot make a weak reused password safe, and a strong password cannot compensate for unprotected storage.
+
 <!-- pagebreak -->
 
 ## 1. Introduction
@@ -77,6 +88,10 @@ The article does not identify its strength algorithm or publish a dataset, test 
 
 The proposed work retains these vault functions and improves Step 4 with additional evidence. This is a controlled comparison: the core local-vault design is unchanged while password assessment and feedback are extended.
 
+### What the baseline does and does not decide
+
+The baseline can state whether a password has length, uppercase, lowercase, digit, and symbol characteristics. It cannot determine whether the password was exposed in a breach, whether it is a common phrase with substitutions, or whether another person can guess it easily. This distinction is central to the project: the proposed method improves feedback quality, while the encryption design continues to protect the stored vault separately.
+
 <!-- pagebreak -->
 
 ## 3. Implementation of the Existing Approach
@@ -91,6 +106,12 @@ The baseline is implemented as a React 18, TypeScript, Vite, and Tailwind CSS br
 | Vault functions | Password generator, add/delete/search/category, five-minute auto-lock |
 | Existing feedback | Composition rule meter and zxcvbn estimation |
 
+### Encryption and key lifecycle
+
+The master password is used as input to PBKDF2; it is not stored as a plaintext vault value. PBKDF2 combines the master password with a random salt and a high iteration count to derive an AES key. Each encrypted record uses a fresh initialization vector, which prevents identical input records from producing the same ciphertext. AES-GCM additionally provides authenticated encryption, so a modified encrypted record can be detected during decryption.
+
+When the user locks the vault, the in-memory unlock state is cleared. The browser storage retains only encrypted vault data and the metadata needed for later key derivation. This local-only implementation improves demonstration privacy but does not replace endpoint security: an attacker who controls the browser context while the vault is unlocked can still access displayed information.
+
 ### Experimental environment
 
 The proposed model service uses Python, Flask, pandas, NumPy, scikit-learn, XGBoost, joblib, and zxcvbn. It binds to `127.0.0.1:5000` so that optional analysis stays on the demonstration device. The active service selects the Random Forest artifact because it had the best macro-F1 on the verified clean test set.
@@ -98,6 +119,10 @@ The proposed model service uses Python, Flask, pandas, NumPy, scikit-learn, XGBo
 ### Baseline limitation
 
 The rule meter is immediate and easy to explain, but it considers visible composition rather than whether a password resembles a known word, sequence, or common pattern. It is a useful baseline, not a complete security decision.
+
+### Implementation scope for demonstration
+
+The demonstration uses synthetic credentials only. The local email field separates browser vaults for testing, but it is not an online login system and does not send data to Gmail or another identity provider. Optional model analysis is limited to the loopback Flask service. The only external check is HIBP's range API, which receives a five-character SHA-1 prefix rather than the full password.
 
 <!-- pagebreak -->
 
@@ -145,6 +170,16 @@ The Flask service exposes `/api/analyze` and `/api/recommend`. The analysis endp
 **Figure 2.** Implemented architecture and trust boundaries.
 
 The user interface presents only decision-relevant information: the overall verdict, breach status, brief feedback, and recommendations when applicable. It does not treat an exact probability as a security promise, and presentation-only controls are excluded from this report.
+
+### Service responsibilities and failure handling
+
+| Local endpoint | Purpose | Important behaviour |
+|---|---|---|
+| `/health` | Confirms the local service and selected model are available | Returns status only; no password input is needed |
+| `/api/analyze` | Produces rule, zxcvbn, ML, HIBP, and consensus results | Password is handled only for the current loopback request and is not stored |
+| `/api/recommend` | Produces stronger alternatives for weak or medium input | Uses `secrets` for random additions and validates candidates with the active model |
+
+If the local model service is not running, the application still provides browser-side zxcvbn feedback and states that ML analysis is unavailable. This fallback prevents the interface from silently presenting an incomplete result as a full security assessment. The HIBP check is treated separately: an unavailable external lookup is shown as unavailable rather than as a clean breach result.
 
 <!-- pagebreak -->
 
