@@ -35,9 +35,26 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Ensure all datasets and models are tracked
+# Keep the dataset guide and active model artifacts tracked.
 !datasets/
 !proposed-improvement/ml-model/models/
 # Keep the training dictionary from Kaggle output local; it contains passwords.
 proposed-improvement/ml-model/models/dictionary.txt
+
+# Research data and archived experiments stay local. The repository keeps only
+# acquisition notes and the active model artifacts needed by the demo.
+datasets/*
+!datasets/README.md
+proposed-improvement/ml-model/models-retrained-*/
+
+# Superseded generated figures are kept locally; only figures used by the
+# final report are versioned.
+report/figures/confusion_matrix_rf.png
+report/figures/confusion_matrix_xgb.png
+report/figures/feature_importance.png
+report/figures/kdf_benchmark_bar.png
+report/figures/kdf_benchmark_results.json
+report/figures/kdf_benchmark_table.png
+report/figures/roc_curve.png
+report/figures/system_architecture.png
 

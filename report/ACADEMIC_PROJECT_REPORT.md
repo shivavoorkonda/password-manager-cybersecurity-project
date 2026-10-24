@@ -11,6 +11,8 @@
 
 **Department of Computer Science and Engineering, IIIT Sri City**
 
+**Project repository:** https://github.com/shivavoorkonda/password-manager-cybersecurity-project
+
 ## Abstract
 
 This project implements a browser-based password-manager prototype and evaluates an improvement to its password-strength feedback. The vault encrypts entries locally with AES-256-GCM. A master password is processed with PBKDF2-HMAC-SHA256 using a random salt and 600,000 iterations. The application includes password generation, search, categories, automatic locking, a composition-based rule meter, zxcvbn feedback, and a Have I Been Pwned (HIBP) range lookup.

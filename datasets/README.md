@@ -13,11 +13,11 @@ The current Kaggle notebook reads the four attached Kaggle datasets directly. Yo
 
 In Kaggle, attach all four with **Add Data**, then run the notebook at `proposed-improvement/ml-model/kaggle_password_model_training.ipynb`. The code searches under `/kaggle/input` and records its discovered files in the run metadata. Do not use any real personal or account password as training data or a demo input.
 
-## Files already in this repository
+## Local-data policy
 
-This checkout currently tracks several password-list and strength-dataset files, including `password_strength.csv`, `rockyou.txt`, `top10k-common-passwords.csv`, and `xato-net-10-million-passwords.csv`. These files are not needed for the current Kaggle notebook. The older local `prepare_data.py` pipeline refers to this different set of files and should not be confused with the four-input Kaggle experiment.
+Raw password lists and evaluation CSV files are intentionally not versioned in this repository. They can contain exposed credentials, are large, and are not required to run the browser demo with the included active model. Obtain them only from the approved Kaggle sources above when retraining or reproducing the evaluation.
 
-Password lists can contain exposed credentials. Keep them only for the approved class research, follow each source's terms and provenance, and avoid copying them into public artifacts. The model ZIP should contain model files, feature order, metadata, and the training dictionary only; do not package the raw password lists. `dictionary.txt` is ignored by Git because it contains password strings.
+Keep password lists in a local, access-controlled workspace; follow each source's terms and provenance. Do not package raw lists or a password dictionary in a public release. The active model package should contain only its model artifacts, feature order, metadata, and documented evaluation summary.
 
 ## HIBP data
 

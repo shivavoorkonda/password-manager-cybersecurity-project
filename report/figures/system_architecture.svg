@@ -1,74 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
-  <title id="title">Secure Password Manager Architecture and Trust Boundaries</title>
-  <desc id="desc">A browser-local encrypted vault connects to a loopback Flask analysis service. Only a SHA-1 hash prefix is sent to the external HIBP service.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Simple Secure Password Manager Architecture</title>
+  <desc id="desc">The local browser vault requests optional analysis from a loopback Flask service. Only a SHA-1 prefix is sent to HIBP.</desc>
   <defs>
     <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="4" orient="auto"><path d="M0 0 L0 8 L10 4 z" fill="#35565b"/></marker>
-    <style>
-      .title{font:bold 34px Arial;fill:#173b3f}.zone{font:bold 18px Arial;fill:#173b3f}.boxh{font:bold 20px Arial;fill:#173b3f}.body{font:16px Arial;fill:#34454a}.small{font:14px Arial;fill:#526d70}.tag{font:bold 14px Arial;fill:#ffffff}.edge{stroke:#35565b;stroke-width:3;fill:none;marker-end:url(#arrow)}.dashed{stroke:#bf6f3f;stroke-width:3;stroke-dasharray:9 6;fill:none;marker-end:url(#arrow)}
-    </style>
+    <style>.title{font:bold 30px Arial;fill:#173b3f}.h{font:bold 20px Arial;fill:#173b3f}.b{font:16px Arial;fill:#34454a}.s{font:14px Arial;fill:#526d70}.edge{stroke:#35565b;stroke-width:3;fill:none;marker-end:url(#arrow)}.external{stroke:#c96d32;stroke-width:3;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}</style>
   </defs>
-  <rect width="1400" height="820" fill="#fbfcfb"/>
-  <text x="700" y="48" text-anchor="middle" class="title">Secure Password Manager - Architecture and Trust Boundaries</text>
-  <text x="700" y="76" text-anchor="middle" class="small">Active components in the implemented browser-local prototype</text>
+  <rect width="1200" height="620" fill="#fbfcfb"/>
+  <text x="600" y="48" text-anchor="middle" class="title">Secure Password Manager - Simplified Architecture</text>
+  <text x="600" y="75" text-anchor="middle" class="s">Local vault and analysis with privacy-preserving breach lookup</text>
 
-  <rect x="55" y="110" width="895" height="620" rx="18" fill="#eef6f4" stroke="#2f6f6d" stroke-width="3"/>
-  <rect x="78" y="92" width="184" height="34" rx="17" fill="#2f6f6d"/>
-  <text x="170" y="115" text-anchor="middle" class="tag">USER DEVICE</text>
-  <text x="85" y="155" class="zone">Browser application (React + TypeScript)</text>
+  <rect x="50" y="125" width="320" height="310" rx="18" fill="#eef6f4" stroke="#2f6f6d" stroke-width="3"/>
+  <text x="78" y="165" class="h">1. Browser vault</text>
+  <text x="78" y="205" class="b">Encrypted local credentials</text>
+  <text x="78" y="235" class="b">AES-256-GCM + PBKDF2</text>
+  <text x="78" y="265" class="b">Rule meter + zxcvbn</text>
+  <text x="78" y="295" class="b">Generator and auto-lock</text>
+  <text x="78" y="350" class="s">Password remains on the device</text>
 
-  <rect x="90" y="185" width="250" height="188" rx="14" fill="#ffffff" stroke="#4d8f90" stroke-width="2.5"/>
-  <text x="115" y="220" class="boxh">Encrypted vault</text>
-  <text x="115" y="252" class="body">PBKDF2-HMAC-SHA256</text>
-  <text x="115" y="277" class="body">600,000 iterations + salt</text>
-  <text x="115" y="302" class="body">AES-256-GCM per record</text>
-  <text x="115" y="332" class="small">Ciphertext stored in localStorage</text>
+  <rect x="440" y="125" width="320" height="310" rx="18" fill="#f1faf6" stroke="#1f7a68" stroke-width="3"/>
+  <text x="468" y="165" class="h">2. Local analysis</text>
+  <text x="468" y="205" class="b">Flask at 127.0.0.1:5000</text>
+  <text x="468" y="235" class="b">17 features -> Random Forest</text>
+  <text x="468" y="265" class="b">Consensus and suggestions</text>
+  <text x="468" y="295" class="b">No password logging</text>
+  <text x="468" y="350" class="s">Loopback only; not network exposed</text>
 
-  <rect x="392" y="185" width="250" height="188" rx="14" fill="#ffffff" stroke="#4d8f90" stroke-width="2.5"/>
-  <text x="417" y="220" class="boxh">Password workspace</text>
-  <text x="417" y="252" class="body">Generator, search, categories</text>
-  <text x="417" y="277" class="body">Rule meter + zxcvbn</text>
-  <text x="417" y="302" class="body">Auto-lock after inactivity</text>
-  <text x="417" y="332" class="small">Initial feedback stays in browser</text>
+  <rect x="830" y="125" width="320" height="310" rx="18" fill="#fff6ed" stroke="#c96d32" stroke-width="3"/>
+  <text x="858" y="165" class="h">3. HIBP check</text>
+  <text x="858" y="205" class="b">SHA-1 calculated locally</text>
+  <text x="858" y="235" class="b">Only first 5 hash characters</text>
+  <text x="858" y="265" class="b">sent to the range API</text>
+  <text x="858" y="295" class="b">Suffixes matched locally</text>
+  <text x="858" y="350" class="s">Full password never reaches HIBP</text>
 
-  <rect x="694" y="185" width="220" height="188" rx="14" fill="#ffffff" stroke="#4d8f90" stroke-width="2.5"/>
-  <text x="719" y="220" class="boxh">Security result</text>
-  <text x="719" y="252" class="body">Consensus verdict</text>
-  <text x="719" y="277" class="body">Breach status</text>
-  <text x="719" y="302" class="body">Recommendations</text>
-  <text x="719" y="332" class="small">Rendered only when needed</text>
-
-  <path d="M340 279 H392" class="edge"/>
-  <path d="M642 279 H694" class="edge"/>
-
-  <rect x="145" y="470" width="560" height="190" rx="16" fill="#ffffff" stroke="#1f7a68" stroke-width="3"/>
-  <rect x="170" y="452" width="260" height="34" rx="17" fill="#1f7a68"/>
-  <text x="300" y="475" text-anchor="middle" class="tag">LOOPBACK ONLY: 127.0.0.1:5000</text>
-  <text x="175" y="522" class="boxh">Local Flask analysis service</text>
-  <text x="175" y="554" class="body">1. Extract 17 password features</text>
-  <text x="175" y="580" class="body">2. Run selected Random Forest model</text>
-  <text x="175" y="606" class="body">3. Build consensus and recommendations</text>
-  <text x="175" y="637" class="small">Password is used for the current request only; it is not logged or persisted.</text>
-  <path d="M518 373 V470" class="edge"/>
-  <text x="536" y="428" class="small">optional local analysis</text>
-  <path d="M705 565 L804 565 L804 373" class="edge"/>
-  <text x="821" y="445" class="small">verdict + breach result</text>
-
-  <rect x="1020" y="245" width="325" height="282" rx="16" fill="#fff6ed" stroke="#c96d32" stroke-width="3"/>
-  <rect x="1045" y="227" width="194" height="34" rx="17" fill="#c96d32"/>
-  <text x="1142" y="250" text-anchor="middle" class="tag">EXTERNAL SERVICE</text>
-  <text x="1050" y="302" class="boxh">HIBP Pwned Passwords API</text>
-  <text x="1050" y="338" class="body">SHA-1 computed locally</text>
-  <text x="1050" y="366" class="body">Only first 5 hash characters</text>
-  <text x="1050" y="394" class="body">sent to HIBP range endpoint</text>
-  <text x="1050" y="430" class="body">Suffixes returned for local match</text>
-  <text x="1050" y="476" class="small">No complete password is sent outside</text>
-  <path d="M705 595 H1020" class="dashed"/>
-  <text x="860" y="580" text-anchor="middle" class="small">SHA-1 prefix only</text>
-
-  <rect x="1020" y="580" width="325" height="86" rx="12" fill="#fffdf8" stroke="#c96d32" stroke-width="2" stroke-dasharray="7 5"/>
-  <text x="1182" y="614" text-anchor="middle" class="boxh">Privacy boundary</text>
-  <text x="1182" y="644" text-anchor="middle" class="body">Full password never leaves device</text>
-
-  <rect x="82" y="758" width="1236" height="36" rx="8" fill="#e4efec"/>
-  <text x="700" y="782" text-anchor="middle" class="small">Scope: browser-local prototype. No cloud synchronisation, account recovery, or production server is implied.</text>
+  <path d="M370 240 H440" class="edge"/><text x="405" y="220" text-anchor="middle" class="s">optional analysis</text>
+  <path d="M440 320 H370" class="edge"/><text x="405" y="347" text-anchor="middle" class="s">verdict + advice</text>
+  <path d="M760 250 H830" class="external"/><text x="795" y="230" text-anchor="middle" class="s">SHA-1 prefix only</text>
+  <rect x="210" y="500" width="780" height="55" rx="10" fill="#e4efec"/>
+  <text x="600" y="523" text-anchor="middle" class="h">Privacy boundary</text>
+  <text x="600" y="546" text-anchor="middle" class="b">The complete password remains on the user device.</text>
 </svg>
