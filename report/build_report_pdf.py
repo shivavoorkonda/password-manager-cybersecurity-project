@@ -115,16 +115,16 @@ def render_diagram(name: str, output: Path) -> None:
         draw.line((870, 260, 940, 260), fill="#475569", width=4)
         draw.polygon([(940, 260), (923, 250), (923, 270)], fill="#475569")
         card((100, 150, 450, 350), "Encrypted local vault", ["PBKDF2-HMAC-SHA256 (600,000)", "AES-256-GCM; fresh IV per entry", "Encrypted records in localStorage"], "#ffffff", "#60a5fa")
-        card((520, 150, 870, 350), "Password interface", ["Generator, search and categories", "Rule meter + zxcvbn in browser", "Optional loopback analysis request"], "#ffffff", "#60a5fa")
+        card((520, 150, 870, 350), "Password interface", ["Generator, search and categories", "Rule meter + zxcvbn in browser", "Analysis sends password to local Flask"], "#ffffff", "#60a5fa")
         card((940, 150, 1300, 350), "Security feedback", ["ML verdict and confidence", "Breach status and consensus", "Recommendations when needed"], "#ffffff", "#60a5fa")
 
-        # Optional password-analysis request/response and HIBP range exchange.
-        arrow((700, 350), (500, 450), "password over loopback")
-        arrow((620, 450), (790, 350), "analysis result")
+        # Password-analysis request/response and HIBP range exchange.
+        arrow((650, 350), (500, 450), "password -> Flask")
+        arrow((620, 450), (850, 350), "analysis result")
         arrow((670, 545), (780, 545), "prefix only")
         arrow_left((780, 600), (670, 600), "suffixes")
-        card((170, 450, 670, 665), "Local Flask service - 127.0.0.1:5000", ["Receives password over loopback only", "Extracts 17 features -> selected RF model", "Computes SHA-1 and calls HIBP", "Returns verdict and recommendations"], "#ecfdf5", "#059669")
-        card((780, 450, 1200, 665), "HIBP range API", ["Only first 5 hash characters leave device", "Returns matching hash suffixes", "Flask compares suffixes locally", "HIBP never receives the full password"], "#fff7ed", "#ea580c")
+        card((170, 450, 670, 665), "Local Flask service - 127.0.0.1:5000", ["Receives plaintext password over loopback", "Extracts 17 features -> active ML model", "/analyze returns verdict; /recommend is separate", "Computes SHA-1 and calls HIBP", "Input handled in memory; not stored"], "#ecfdf5", "#059669")
+        card((780, 450, 1200, 665), "HIBP range API", ["Only first 5 hash characters leave device", "Returns suffix/count list for the prefix", "Flask checks full suffix locally", "HIBP never receives the full password"], "#fff7ed", "#ea580c")
 
         draw.rounded_rectangle((250, 725, 1150, 780), radius=10, fill="#f8fafc", outline="#64748b", width=3)
         draw.text((700, 752), "Separate Node.js / PostgreSQL scaffold - not connected to the browser-vault flow", font=small, fill="#334155", anchor="mm")

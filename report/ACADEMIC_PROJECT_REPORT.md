@@ -166,7 +166,7 @@ The recommendation engine is invoked only for weak or medium results. It applies
 
 **Figure 1.** Operational workflow of the proposed solution.
 
-The browser performs rule and zxcvbn feedback immediately. If analysis is requested, the full password is sent only to the loopback Flask service. Flask extracts 17 features and evaluates the active model. For the HIBP check, Flask hashes the password with SHA-1 and sends only the first five hexadecimal characters to the HIBP range endpoint. The suffixes returned by HIBP are compared locally; the full password is never sent to HIBP.
+The browser performs rule and zxcvbn feedback immediately. During ML analysis, the password is sent in plaintext over loopback to the Flask service on the same computer; the service handles it in memory and does not store it. Flask extracts 17 features and evaluates the active model. For the HIBP check, Flask hashes the password with SHA-1 and sends only the first five hexadecimal characters to the HIBP range endpoint. HIBP returns a suffix/count list for that prefix, and Flask checks the full hash suffix locally; the full password is never sent to HIBP. The `/api/analyze` and `/api/recommend` requests are separate.
 
 ### Security assumptions and limits
 

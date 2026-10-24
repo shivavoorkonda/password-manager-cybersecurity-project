@@ -14,7 +14,7 @@ Browser-local password-manager prototype with encrypted vault storage, password-
 
 ## System architecture
 
-The browser uses the local Flask service for optional analysis. Flask sends only a five-character SHA-1 prefix to HIBP and compares returned suffixes locally. The Node.js/PostgreSQL scaffold remains separate from the browser-vault flow.
+During analysis, the browser sends the password in plaintext over loopback to the local Flask service on the same computer; the service handles the request in memory and does not store the password. Flask sends only a five-character SHA-1 prefix to HIBP, receives the suffix/count list for that prefix, and checks it locally. Analysis and recommendation use separate API calls. The Node.js/PostgreSQL scaffold remains separate from the browser-vault flow.
 
 ![Secure Password Manager architecture showing the browser vault and interface, loopback Flask analysis, HIBP range lookup, and the separate Node/PostgreSQL scaffold](report/figures/system_architecture.svg)
 

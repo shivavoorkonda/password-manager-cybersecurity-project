@@ -1,6 +1,6 @@
 ﻿<svg xmlns="http://www.w3.org/2000/svg" width="1622" height="940" viewBox="0 0 1622 940" role="img" aria-labelledby="title desc">
 <title id="title">Secure Password Manager — System Architecture</title>
-<desc id="desc">The browser vault calls a local Flask service for analysis. Flask sends only a five-character SHA-1 prefix to HIBP and compares returned suffixes locally. The Node and PostgreSQL scaffold is separate.</desc>
+<desc id="desc">Vault entries are encrypted in browser storage. During analysis, the browser sends the entered password in plaintext over loopback to the local Flask service; Flask sends only a five-character SHA-1 prefix to HIBP and checks the returned suffix/count list locally. Recommendations use a separate endpoint. The Node and PostgreSQL scaffold is separate.</desc>
 <defs>
   <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11 z" fill="#526276"/></marker>
   <marker id="arrowL" markerWidth="12" markerHeight="12" refX="2" refY="6" orient="auto"><path d="M11 1 L1 6 L11 11 z" fill="#526276"/></marker>
@@ -11,10 +11,10 @@
 <rect x="76" y="110" width="1470" height="336" rx="22" fill="#f4f8ff" stroke="#2563eb" stroke-width="3"/>
 <text class="group" x="118" y="157">Browser — React + TypeScript</text>
 
-<!-- Optional request/response paths and HIBP range exchange -->
+<!-- Local password-analysis request/response and HIBP range exchange -->
 <path d="M 812 392 L 580 548" stroke="#526276" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
 <path d="M 680 548 L 870 392" stroke="#526276" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-<text class="small" x="657" y="474" text-anchor="middle">password / result</text>
+<text class="small" x="657" y="474" text-anchor="middle">password over loopback / result</text>
 <path d="M 778 625 L 990 625" stroke="#526276" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
 <path d="M 990 690 L 778 690" stroke="#526276" stroke-width="3" fill="none" marker-end="url(#arrowL)"/>
 <text class="small" x="884" y="610" text-anchor="middle" fill="#047857">prefix only</text>
@@ -32,7 +32,7 @@
 <text class="head" x="642" y="232">Password interface</text>
 <text class="body" x="642" y="273">Generator, search and categories</text>
 <text class="body" x="642" y="308">Rule meter + zxcvbn in browser</text>
-<text class="body" x="642" y="343">Optional loopback analysis request</text>
+<text class="body" x="642" y="343">Sends password to Flask (local)</text>
 
 <rect x="1114" y="190" width="392" height="202" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
 <text class="head" x="1140" y="232">Security feedback</text>
@@ -43,14 +43,15 @@
 <rect x="210" y="548" width="568" height="236" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="3"/>
 <text class="head" x="245" y="594" fill="#065f46">Local Flask service — 127.0.0.1:5000</text>
 <text class="body" x="245" y="635">Receives password over loopback only</text>
-<text class="body" x="245" y="672">Extracts 17 features → selected RF model</text>
-<text class="body" x="245" y="709">Computes SHA-1; requests HIBP range</text>
-<text class="small" x="245" y="750" fill="#475569">Returns verdict and recommendations; input not persisted</text>
+<text class="body" x="245" y="672">Extracts 17 features → active ML model</text>
+<text class="body" x="245" y="709">Separate /analyze and /recommend calls</text>
+<text class="body" x="245" y="746">Computes SHA-1; requests HIBP range</text>
+<text class="small" x="245" y="775" fill="#475569">Request password is handled in memory, not stored</text>
 
 <rect x="990" y="548" width="420" height="236" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/>
 <text class="head" x="1025" y="594" fill="#9a3412">HIBP range API</text>
 <text class="body" x="1025" y="635">Only first 5 hash characters leave device</text>
-<text class="body" x="1025" y="672">Returns matching hash suffixes</text>
+<text class="body" x="1025" y="672">Returns suffix/count list for that prefix</text>
 <text class="body" x="1025" y="709">Suffixes compared by Flask locally</text>
 <text class="small" x="1025" y="750" fill="#475569">HIBP never receives the full password</text>
 
