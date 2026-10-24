@@ -1,6 +1,7 @@
 """Build the academic report PDF from its Markdown source using ReportLab."""
 from __future__ import annotations
 
+import math
 import re
 import shutil
 from pathlib import Path
@@ -71,23 +72,60 @@ def render_diagram(name: str, output: Path) -> None:
 
     def arrow(start, end, label=None):
         draw.line([start, end], fill="#475569", width=4)
-        draw.polygon([(end[0], end[1]), (end[0] - 16, end[1] - 8), (end[0] - 16, end[1] + 8)], fill="#475569")
+        angle = math.atan2(end[1] - start[1], end[0] - start[0])
+        left = angle + math.pi * 0.83
+        right = angle - math.pi * 0.83
+        draw.polygon([
+            end,
+            (end[0] + 18 * math.cos(left), end[1] + 18 * math.sin(left)),
+            (end[0] + 18 * math.cos(right), end[1] + 18 * math.sin(right)),
+        ], fill="#475569")
         if label:
             draw.text(((start[0] + end[0]) / 2 - 55, (start[1] + end[1]) / 2 - 24), label, font=small, fill="#475569")
 
     if name == "system_architecture":
-        draw.text((230, 30), "Secure Password Manager - System Architecture", font=title_font, fill="#0f172a")
-        draw.rounded_rectangle((55, 95, 1345, 385), radius=20, fill="#eff6ff", outline="#2563eb", width=3)
-        draw.text((85, 120), "Browser - React + TypeScript", font=bold, fill="#0f172a")
-        text_box((90, 165, 430, 340), "Encrypted local vault", ["PBKDF2-HMAC-SHA256 (600,000)", "AES-256-GCM, fresh IV per entry", "Encrypted entries in localStorage"], "#ffffff", "#60a5fa")
-        text_box((530, 165, 870, 340), "Password interface", ["Generator, search and categories", "Rule meter + zxcvbn in browser", "Optional loopback analysis request"], "#ffffff", "#60a5fa")
-        text_box((970, 165, 1310, 340), "Security feedback", ["ML confidence and consensus", "HIBP breach status", "Recommendations when needed"], "#ffffff", "#60a5fa")
-        arrow((430, 250), (530, 250)); arrow((870, 250), (970, 250))
-        text_box((160, 480, 660, 665), "Local Flask service - 127.0.0.1:5000", ["Receives optional password over loopback", "Extracts 17 features -> selected ML model", "Returns ML result, consensus, recommendations", "Passwords are not logged or persisted"], "#ecfdf5", "#059669")
-        text_box((800, 480, 1190, 665), "HIBP Pwned Passwords API", ["Flask computes SHA-1 locally", "Only five hash characters leave device", "Suffixes return for local comparison", "Full password never reaches HIBP"], "#fff7ed", "#ea580c")
-        arrow((700, 340), (500, 480)); arrow((660, 570), (800, 570), "SHA-1 prefix only"); arrow((970, 480), (820, 340))
-        draw.rounded_rectangle((310, 730, 1090, 785), radius=10, fill="#f1f5f9", outline="#64748b", width=2)
-        draw.text((385, 748), "Separate Node.js / PostgreSQL scaffold - not connected to browser-vault flow", font=small, fill="#334155")
+        # A compact type scale keeps the complete trust-boundary diagram legible
+        # when it is placed inside an A4 report page.
+        regular = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 16)
+        bold = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 20)
+        title_font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 32)
+        small = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 13)
+        canvas.paste(PILImage.new("RGB", (width, height), "#fbfcfb"))
+        draw.text((180, 28), "Secure Password Manager - Architecture and Trust Boundaries", font=title_font, fill="#173b3f")
+        draw.text((430, 75), "Active components in the implemented browser-local prototype", font=small, fill="#526d70")
+
+        draw.rounded_rectangle((55, 105, 950, 730), radius=22, fill="#eef6f4", outline="#2f6f6d", width=4)
+        draw.rounded_rectangle((78, 87, 270, 125), radius=19, fill="#2f6f6d")
+        draw.text((117, 97), "USER DEVICE", font=bold, fill="#ffffff")
+        draw.text((85, 150), "Browser application - React + TypeScript", font=bold, fill="#173b3f")
+        text_box((90, 185, 340, 370), "Encrypted vault", ["PBKDF2-HMAC-SHA256", "600,000 iterations + salt", "AES-256-GCM per record", "Ciphertext in localStorage"], "#ffffff", "#4d8f90")
+        text_box((392, 185, 642, 370), "Password workspace", ["Generator, search, categories", "Rule meter + zxcvbn", "Auto-lock after inactivity", "Feedback stays in browser"], "#ffffff", "#4d8f90")
+        text_box((694, 185, 914, 370), "Security result", ["Consensus verdict", "Breach status", "Recommendations", "Shown when needed"], "#ffffff", "#4d8f90")
+        arrow((340, 275), (392, 275)); arrow((642, 275), (694, 275))
+
+        text_box((145, 470, 705, 660), "Local Flask analysis service", ["Loopback only: 127.0.0.1:5000", "1. Extract 17 password features", "2. Run selected Random Forest model", "3. Return verdict and recommendations", "Passwords are not logged or persisted"], "#ffffff", "#1f7a68")
+        draw.rounded_rectangle((170, 450, 460, 486), radius=18, fill="#1f7a68")
+        draw.text((200, 459), "LOOPBACK ONLY", font=bold, fill="#ffffff")
+        arrow((517, 370), (517, 470), "optional analysis")
+        arrow((705, 560), (805, 560), "result")
+        draw.line([(805, 560), (805, 370)], fill="#475569", width=4)
+        draw.polygon([(805, 370), (797, 386), (813, 386)], fill="#475569")
+
+        draw.rounded_rectangle((1000, 255, 1345, 535), radius=18, fill="#fff6ed", outline="#c96d32", width=4)
+        draw.rounded_rectangle((1028, 237, 1245, 273), radius=18, fill="#c96d32")
+        draw.text((1065, 246), "EXTERNAL", font=bold, fill="#ffffff")
+        draw.text((1030, 315), "HIBP Pwned Passwords API", font=bold, fill="#173b3f")
+        for y, line in [(350, "SHA-1 computed locally"), (380, "Only first 5 hash characters"), (410, "sent to HIBP range endpoint"), (440, "Suffixes returned for local match")]:
+            draw.text((1030, y), line, font=regular, fill="#34454a")
+        draw.text((1030, 485), "No full password sent outside", font=small, fill="#526d70")
+        draw.line([(705, 600), (1000, 600), (1000, 500)], fill="#bf6f3f", width=4)
+        draw.polygon([(1000, 500), (992, 516), (1008, 516)], fill="#bf6f3f")
+        draw.text((805, 575), "SHA-1 prefix only", font=small, fill="#a3552d")
+        draw.rounded_rectangle((1000, 590, 1345, 670), radius=12, fill="#fffdf8", outline="#c96d32", width=2)
+        draw.text((1095, 612), "PRIVACY BOUNDARY", font=bold, fill="#173b3f")
+        draw.text((1040, 642), "Full password never leaves device", font=regular, fill="#34454a")
+        draw.rounded_rectangle((82, 758, 1235, 798), radius=8, fill="#e4efec")
+        draw.text((190, 770), "Scope: browser-local prototype. No cloud sync, recovery, or production server is implied.", font=small, fill="#526d70")
     else:
         draw.text((465, 30), "Operational Workflow", font=title_font, fill="#0f172a")
         steps = [
